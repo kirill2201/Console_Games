@@ -1,0 +1,561 @@
+﻿#include "Player.h"
+
+size_t Player::players_count = 0;
+
+EnShipDirection Player::parse_direction(std::string direction_str)
+{
+	std::string cleaned;
+	for (char c : direction_str) {
+		cleaned += std::tolower(c);
+	}
+
+	std::string trimmed;
+	for (char c : cleaned)
+	{
+		if (!std::isspace(c)) {
+			trimmed += c;
+		}
+	}
+
+	if (trimmed.empty())
+	{
+		throw ExceptionInvalidArgument("[Chief Officer] Captain, you didn't specify a direction! I need 'left', 'right', 'top', 'bottom', or 'reset'!");
+	}
+
+	if (trimmed == "left")
+	{
+		return EN_SHIP_LEFT;
+	}
+	else if (trimmed == "right")
+	{
+		return EN_SHIP_RIGHT;
+	}
+	else if (trimmed == "top")
+	{
+		return EN_SHIP_TOP;
+	}
+	else if (trimmed == "bottom")
+	{
+		return EN_SHIP_BOTTOM;
+	}
+	else if (trimmed == "reset")
+	{
+		return EN_SHIP_RESET;
+	}
+	else
+	{
+		throw ExceptionInvalidArgument("[Chief Officer] Captain, I don't understand that heading! Use 'left', 'right', 'top', 'bottom', or 'reset'!");
+	}
+}
+
+void Player::parse_coordinates(const std::string& input, size_t& row, size_t& col)
+{
+	// Удаляем пробелы из входной строки
+	std::string cleaned;
+	for (char c : input) {
+		if (!std::isspace(c)) {
+			cleaned += c;
+		}
+	}
+
+	// Проверяем длину очищенной строки
+	if (cleaned.empty()) {
+		throw ExceptionInvalidArgument("[Chief Officer] Captain, your order is unclear! No coordinates provided for the stern!");
+	}
+
+	// Форматы: [A-J][0-9], [a-j][0-9], [0-9][0-9], []:[] или []:[]
+	size_t pos = cleaned.find(':');
+	std::string first, second;
+
+	if (pos != std::string::npos) {
+		// Формат с двоеточием, например "A:1" или "1:2"
+		first = cleaned.substr(0, pos);
+		second = cleaned.substr(pos + 1);
+	}
+	else {
+		// Формат без двоеточия, например "A1" или "12"
+		if (cleaned.length() < 2 || cleaned.length() > 2) {
+			throw ExceptionInvalidArgument("[Chief Officer] Captain, I can't make sense of this! Please specify a proper square and number, like 'A1' or '1:2'!");
+		}
+		first = cleaned.substr(0, 1);
+		second = cleaned.substr(1, 1);
+	}
+
+	// Проверяем, что обе части не пустые
+	if (first.empty() || second.empty()) {
+		throw ExceptionInvalidArgument("[Chief Officer] Captain, your coordinates are incomplete! I need both a square and a number!");
+	}
+
+	// Обработка форматов
+	if (std::isalpha(first[0])) {
+		// Формат [A-J][0-9] или [a-j][0-9], включая "A1"
+		char letter = std::toupper(first[0]);
+		if (letter < 'A' || letter > 'J') {
+			throw ExceptionInvalidArgument("[Chief Officer] Captain, that square is off the charts! Use letters A to J only!");
+		}
+		row = letter - 'A'; // A=0, B=1, ..., J=9
+
+		// Вторая часть должна быть цифрой
+		if (!std::isdigit(second[0])) {
+			throw ExceptionInvalidArgument("[Chief Officer] Captain, the number for the row is missing! Give me a digit from 0 to 9!");
+		}
+		col = second[0] - '0';
+	}
+	else if (std::isdigit(first[0])) {
+		// Формат [0-9][0-9]
+		if (!std::isdigit(second[0])) {
+			throw ExceptionInvalidArgument("[Chief Officer] Captain, if you're using numbers, both must be digits! Try again, like '12'!");
+		}
+		row = first[0] - '0';
+		col = second[0] - '0';
+	}
+	else {
+		throw ExceptionInvalidArgument("[Chief Officer] Captain, I can't plot that course! Use a letter A-J or a number, followed by a number!");
+	}
+
+	// Проверяем диапазон значений (0-9 для строк и столбцов)
+	if (row > 9 || col > 9) {
+		throw ExceptionInvalidArgument("[Chief Officer] Captain, those coordinates are beyond our map! Keep rows and columns between 0 and 9!");
+	}
+}
+
+bool Player::modify_ship_hull(std::vector<Point>& ship_hull, size_t data_raw, size_t data_col)
+{
+	try
+	{
+		ptr_player_field.get()->check_coords(data_raw, data_col);
+	}
+	catch (const MyException& e)
+	{
+		throw;
+
+		std::cerr << e.what() << std::endl;
+		printf("[Chief Officer] We can\'t put our ship this way...\n");
+		while (getchar() != '\n');
+		ship_hull.clear();
+		return false;
+	}
+
+	Point p;
+	p.x = data_col;
+	p.y = data_raw;
+
+	ship_hull.push_back(p);
+
+	return true;
+}
+
+EnSystemCode Player::set_positions(Ship& ship, std::vector<Point>& ship_hull, EnShipDirection en_ship_direction, size_t data_raw, size_t data_col)
+{
+	size_t ship_sz = ship.get_ship_size() - 1;
+
+	switch (en_ship_direction)
+	{
+	case EN_SHIP_LEFT:
+		for (size_t i = 0; i < ship_sz; i++)
+		{
+			data_col -= 1;
+
+			if (!modify_ship_hull(ship_hull, data_raw, data_col))
+			{
+				throw ExceptionFieldCoords("[Chief Officer] We can\'t put our ship this way...");
+			}
+		}
+
+		break;
+
+	case EN_SHIP_RIGHT:
+		for (size_t i = 0; i < ship_sz; i++)
+		{
+			data_col += 1;
+
+			if (!modify_ship_hull(ship_hull, data_raw, data_col))
+			{
+				throw ExceptionFieldCoords("[Chief Officer] We can\'t put our ship this way...");
+			}
+		}
+		break;
+
+	case EN_SHIP_TOP:
+		for (size_t i = 0; i < ship_sz; i++)
+		{
+			data_raw -= 1;
+
+			if (!modify_ship_hull(ship_hull, data_raw, data_col))
+			{
+				throw ExceptionFieldCoords("[Chief Officer] We can\'t put our ship this way...");
+			}
+		}
+		break;
+
+	case EN_SHIP_BOTTOM:
+		for (size_t i = 0; i < ship_sz; i++)
+		{
+			data_raw += 1;
+
+			if (!modify_ship_hull(ship_hull, data_raw, data_col))
+			{
+				throw ExceptionFieldCoords("[Chief Officer] We can\'t put our ship this way...");
+			}
+		}
+		break;
+
+	case EN_SHIP_RESET:
+		return EN_RESET_CODE; // написать новый Exception, который должен отменить выбор начала позиции и запросить его снова
+	}
+
+	return EN_OK_CODE;
+}
+
+EnSystemCode Player::set_ship_hull(Ship& ship, std::vector<Point>& ship_hull)
+{
+	std::string direction_str;
+	bool c_flag = true;
+
+	size_t data_raw = ship_hull[0].y;
+	size_t data_col = ship_hull[0].x;
+
+	while (true)
+	{
+		printf("[Chief Officer] Enter a direction for the bow of the ship (left, right, top, bottom, other for reset): ");
+		getline(std::cin, direction_str);
+
+		EnShipDirection en_ship_direction;
+
+		try
+		{
+			en_ship_direction = parse_direction(direction_str);
+		}
+		catch (const MyException& e)
+		{
+			std::cerr << e.what() << std::endl;
+			continue;
+		}
+
+		try
+		{
+			if (set_positions(ship, ship_hull, en_ship_direction, data_raw, data_col) == EN_RESET_CODE)
+			{
+				std::cout << "[Chief Officer] Denied all commands!" << std::endl;
+				ship_hull.clear();
+
+				return EN_RESET_CODE;
+			}
+		}
+		catch (const MyException& e)
+		{
+			std::cerr << e.what() << std::endl;
+			ship_hull.erase(ship_hull.begin() + 1, ship_hull.end());
+
+			continue;
+		}
+
+		return EN_OK_CODE;
+	}
+}
+
+void Player::set_ship_stern(Point& stern_point)
+{
+	size_t row, col;
+
+	while (true)
+	{
+		std::string user_input;
+
+		std::cout << ("[Chief Officer] Enter a start point for the stern of the ship (Square, Number): ");
+		getline(std::cin, user_input);
+		std::cout << std::endl;
+
+		try
+		{
+			parse_coordinates(user_input, row, col);
+		}
+		catch (const MyException& e)
+		{
+			std::cerr << e.what() << std::endl;
+			continue;
+		}
+
+		try
+		{
+			ptr_player_field.get()->check_coords(row, col);
+		}
+		catch (const MyException& e)
+		{
+			std::cerr << e.what() << std::endl;
+			std::cerr.flush(); // !!! виснет до нажатия enter
+			continue;
+		}
+		stern_point.x = col;
+		stern_point.y = row;
+
+		break;
+
+		// !!! НАДО переделать цикл на возможность выхода из выбора позиции, по большому счету нужно реализовать класс меню с состояниями игры
+	}
+}
+
+void Player::set_player_ship(std::shared_ptr<Ship> ship)
+{
+	ptr_player_field.get()->print_field_large();
+
+	printf("\n[Chief Officer] We have to make a decision about this ship:\n\t");
+	ship.get()->print_ship_info();
+	printf("\n");
+
+	std::vector<Point> ship_coords;
+	Point stern_point;
+
+	while (true)
+	{
+		set_ship_stern(stern_point);
+		ship_coords.push_back(stern_point);
+
+		if (ship->get_ship_size() == EN_TORPEDO_BOAT_SIZE)
+			break;
+
+		if (set_ship_hull(*ship.get(), ship_coords) == EN_OK_CODE) {
+			break;
+		}
+	}
+
+	ship->set_position_on_the_map(ship_coords);
+
+	ptr_player_field.get()->put_ship_on_the_map(ship_coords);
+}
+
+void Player::set_random_location_ship(std::shared_ptr<Ship> ship) {
+	srand(static_cast<unsigned int>(time(nullptr))); // Seed random number generator if not already done elsewhere.
+
+	size_t ship_size = ship->get_ship_size();
+	std::vector<Point> ship_hull;
+	bool placed = false;
+
+	while (!placed) {
+		// Step 1: Generate random starting position (stern) within 0-9 for row and col.
+		size_t row = rand() % 10;
+		size_t col = rand() % 10;
+
+		ship_hull.clear();
+		Point stern;
+		stern.x = col;
+		stern.y = row;
+
+		// Step 2: Attempt to add the stern to the hull and check if it's valid.
+		try {
+			ptr_player_field.get()->check_coords(row, col);
+			ship_hull.push_back(stern);
+		}
+		catch (const MyException& e) {
+			// If stern position is invalid (occupied or out of bounds), retry.
+			continue;
+		}
+
+		// Step 3: If ship size is 1, it's already placed successfully.
+		if (ship_size == 1) {
+			placed = true;
+			break;
+		}
+
+		// Step 4: Generate random direction (0-3 for LEFT, RIGHT, TOP, BOTTOM).
+		EnShipDirection dir = static_cast<EnShipDirection>(rand() % 4);
+
+		// Step 5: Try to place the rest of the hull in the chosen direction.
+		size_t data_row = row;
+		size_t data_col = col;
+		bool valid_placement = true;
+
+		try {
+			for (size_t i = 0; i < ship_size - 1; ++i) {
+				switch (dir) {
+				case EN_SHIP_LEFT:
+					data_col -= 1;
+					break;
+				case EN_SHIP_RIGHT:
+					data_col += 1;
+					break;
+				case EN_SHIP_TOP:
+					data_row -= 1;
+					break;
+				case EN_SHIP_BOTTOM:
+					data_row += 1;
+					break;
+				default:
+					valid_placement = false;
+					break;
+				}
+
+				if (!valid_placement) {
+					break;
+				}
+
+				// Use modify_ship_hull to add and check the new position.
+				if (!modify_ship_hull(ship_hull, data_row, data_col)) {
+					valid_placement = false;
+					break;
+				}
+			}
+		}
+		catch (const MyException& e) {
+			// If any exception during placement (e.g., out of bounds or occupied), retry.
+			valid_placement = false;
+		}
+
+		// Step 6: If all parts placed without issues, mark as placed.
+		if (valid_placement && ship_hull.size() == ship_size) {
+			placed = true;
+		}
+		// Otherwise, loop will continue to try a new position/direction.
+	}
+
+	// Step 7: Set the position on the ship and place on the field.
+	ship->set_position_on_the_map(ship_hull);
+	ptr_player_field.get()->put_ship_on_the_map(ship_hull);
+}
+
+void Player::set_player_fleet()
+{
+	system("cls");
+
+	bool random_location = false;
+
+	printf("[Chief Officer] Good afternoon Cap. %s, nowdays we have to locate our fleet, let\'s start\n\n", name.c_str());
+	printf("[print random for quick fleet location?] y/n: ");
+
+	std::string ans;
+
+	std::cin >> ans;
+
+	printf("\n");
+
+	if (ans.compare("y") || ans.compare("Y"))
+	{
+		random_location = true;
+	}
+
+	auto fleet = ptr_player_fleet.get()->get_current_fleet();
+
+	for (size_t i = 0; i < fleet.size(); i++)
+	{
+		if (!random_location)
+		{
+			set_player_ship(fleet[i]);
+		}
+		else
+		{
+			set_random_location_ship(fleet[i]);
+		}
+
+		auto ship_coords = fleet[i]->get_ship_coords();
+
+		for (size_t j = 0; j < fleet[i]->get_ship_size(); j++)
+		{
+			Point p{ ship_coords[j]->x, ship_coords[j]->y };
+
+			point_to_ship_dict[p] = fleet[i];
+		}
+	}
+}
+
+Point Player::make_turn()
+{
+	/*
+		1. Вывод приглашения ко вводу
+		2. Ввод координат
+			а. Проверка на корректность по размерам поля
+			б. Проверка на то, что само поле еще не тронуто
+			в. Если попали, то (записываем в лог противника сообщения об этом) даем право на еще один залп (return true)
+	*/
+
+	size_t row, col;
+	bool turn_flag = true;
+
+	while (turn_flag)
+	{
+		std::cout << "[ " << this->name << " turn ]" << std::endl;
+		std::string user_input;
+		std::cout << "[Chief Officer] Coordinates! Give me a target!: ";
+		std::cin >> user_input;
+
+		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000)
+			throw ExceptionExitCode("Back to menu");
+
+		try
+		{
+			parse_coordinates(user_input, row, col);
+			break;
+		}
+		catch (const MyException& e)
+		{
+			std::cerr << e.what() << std::endl;
+			continue;
+		}
+	}
+
+	Point fire_point;
+
+	fire_point.x = col;
+	fire_point.y = col;
+
+	return fire_point;
+}
+
+void Player::get_fleet_damage(const Point& fire_point)
+{
+	// определить положение пораженного участка относительно кормы - 0-ого элемента, можно сделать через поиск точки в векторе и возврат индекса
+	// выносим этот участок, hit по части корабля, высчитываем жертвы и т.д
+
+	size_t count = 0;
+	auto ptr_ship = point_to_ship_dict[fire_point];
+
+	for (auto cmprt : ptr_ship->get_ship_coords())
+	{
+		if (cmprt->x == fire_point.x && cmprt->y == fire_point.y)
+			break;
+
+		count++;
+	}
+
+	ptr_ship->destroy_ship_compartment(count);
+}
+
+void Player::print_player_field() const
+{
+	this->ptr_player_field->print_field();
+	return;
+}
+
+const std::shared_ptr<GameField> Player::get_field() const
+{
+	return ptr_player_field;
+}
+
+const std::shared_ptr<Fleet> Player::get_fleet() const
+{
+	return ptr_player_fleet;
+}
+
+const std::map<Point, std::shared_ptr<Ship>>& Player::get_point_to_ship_dict() const
+{
+	return this->point_to_ship_dict;
+}
+
+size_t Player::get_player_id() const
+{
+	return this->player_id;
+}
+
+size_t Player::get_point_count() const
+{
+	return this->point_count;
+}
+
+const std::string& Player::get_player_name() const
+{
+	return this->name;
+}
+
+bool Player::get_cur_state() const
+{
+	return this->cur_state;
+}
