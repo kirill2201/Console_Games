@@ -97,7 +97,7 @@ EnMenuOptions MainMenu::menu_process()
 	while (menu_flag) {
 		// Проверка нажатия ESC для выхода
 		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000 && !enter_pressed) {
-			std::cout << "Нажата клавиша ESC. Выход.\n";
+			std::cout << "Pressed ESC. Exit.\n";
 			return EN_EXIT_GAME;
 		}
 
@@ -172,7 +172,7 @@ EnMenuOptions PauseMenu::menu_process()
 	while (menu_flag) {
 		// Проверка нажатия ESC для выхода
 		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000 && !enter_pressed) {
-			std::cout << "Нажата клавиша ESC. Выход.\n";
+			std::cout << "Pressed ESC. Exit.\n";
 			return EN_EXIT_GAME;
 		}
 
@@ -250,7 +250,7 @@ EnMenuOptions SettingsMenu::menu_process()
 	while (menu_flag) {
 		// Проверка нажатия ESC для выхода
 		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000 && !enter_pressed) {
-			std::cout << "Нажата клавиша ESC. Выход.\n";
+			std::cout << "Pressed ESC. Exit.\n";
 			return EN_EXIT_GAME;
 		}
 
@@ -320,7 +320,7 @@ EnMenuOptions LoadingMenu::menu_process()
 	while (menu_flag) {
 		// Проверка нажатия ESC для выхода
 		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000 && !enter_pressed) {
-			std::cout << "Нажата клавиша ESC. Выход.\n";
+			std::cout << "Pressed ESC. Exit.\n";
 			return EN_EXIT_GAME;
 		}
 

@@ -5,6 +5,28 @@
 #include <algorithm>
 #include <random>
 
+enum EnPlayers
+{
+	EN_PLAYER_1,
+	EN_PLAYER_2
+};
+
+enum EnFieldPointType
+{
+	EN_EMPTY_POINT,
+	EN_FIRED_POINT,
+	EN_SHIP_POINT,
+	EN_INTERVAL_ZONE,
+	EN_DESTROY_COMPARTMENT
+};
+
+enum EnFireOptions
+{
+	EN_MISSED,
+	EN_ERROR_COORDS,
+	EN_HIT
+};
+
 enum EnSystemCode
 {
 	EN_RESET_CODE,
@@ -96,7 +118,7 @@ private:
 
 			} while (word != "" && word_count < Config::ship_names_count);
 		}
-		in_stream.close(); 
+		in_stream.close();
 	}
 
 public:

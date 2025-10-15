@@ -10,6 +10,7 @@ void Game::printCentered(const std::vector<std::string>& art) {
 	// Выводим каждую строку арта с центрированием
 	for (const auto& line : art) {
 		int padding = (consoleWidth - line.length()) / 2;
+
 		if (padding > 0) {
 			std::cout << std::string(padding, ' ') << line << std::endl;
 		}

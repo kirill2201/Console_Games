@@ -35,11 +35,8 @@ GameModuleData Gameplay::module_process(EnMenuOptions option)
 	return new_option;
 }
 
-void Gameplay::print_info(bool turn) // доработать вывод чтобы на вражеской карте не было видно вражеских кораблей до из поражения
+void Gameplay::print_info(EnPlayers p_turn) // доработать вывод чтобы на вражеской карте не было видно вражеских кораблей до из поражения
 {
-	bool player_1_turn = turn;
-	bool player_2_turn = !turn;
-
 	std::shared_ptr<Player> player_1 = ptr_player_1;
 	std::shared_ptr<Player> player_2 = ptr_player_2;
 
@@ -59,9 +56,12 @@ void Gameplay::print_info(bool turn) // доработать вывод чтоб
 
 	//Заполнение таблицы флота
 	size_t fleet_idx = 0;
+	// Вывод карт и таблицы
+	wchar_t litera = L'A';
 
-	if (player_1_turn)
+	switch (p_turn)
 	{
+	case EN_PLAYER_1:
 		for (size_t i = 0; i < p1_fleet.size() && fleet_idx < Config::row_size; ++i, ++fleet_idx)
 		{
 			std::string name = p1_fleet[i].get()->get_ship_name();
@@ -76,9 +76,22 @@ void Gameplay::print_info(bool turn) // доработать вывод чтоб
 				name.c_str(), ship_type.c_str(), crew, size);
 			fleet_info[fleet_idx] = buffer;
 		}
-	}
-	else
-	{
+
+		for (size_t i = 0; i < Config::row_size; i++)
+		{
+			player_2.get()->get_field()->print_raw(litera, i, this->ptr_player_2->get_cur_state());
+			printf(" |    ");
+			player_1.get()->get_field()->print_raw(litera, i, this->ptr_player_1->get_cur_state());
+			printf(" |   %s\n", fleet_info[i].c_str());
+			litera++;
+			if (i < Config::row_size - 1)
+			{
+				printf("+====+====+====+====+====+====+====+====+====+====+====+    +====+====+====+====+====+====+====+====+====+====+====+   +====================+==============+========+========+\n");
+			}
+		}
+		break;
+
+	case EN_PLAYER_2:
 		for (size_t i = 0; i < p2_fleet.size() && fleet_idx < Config::row_size; ++i, ++fleet_idx)
 		{
 			std::string name = p2_fleet[i].get()->get_ship_name();
@@ -93,18 +106,12 @@ void Gameplay::print_info(bool turn) // доработать вывод чтоб
 				name.c_str(), ship_type.c_str(), crew, size);
 			fleet_info[fleet_idx] = buffer;
 		}
-	}
 
-	// Вывод карт и таблицы
-	wchar_t litera = L'A';
-
-	if (player_1_turn)
-	{
 		for (size_t i = 0; i < Config::row_size; i++)
 		{
-			player_2.get()->get_field()->print_raw(litera, i, player_2_turn);
+			player_1.get()->get_field()->print_raw(litera, i, this->ptr_player_1->get_cur_state());
 			printf(" |    ");
-			player_1.get()->get_field()->print_raw(litera, i, player_1_turn);
+			player_2.get()->get_field()->print_raw(litera, i, this->ptr_player_2->get_cur_state());
 			printf(" |   %s\n", fleet_info[i].c_str());
 			litera++;
 			if (i < Config::row_size - 1)
@@ -112,21 +119,7 @@ void Gameplay::print_info(bool turn) // доработать вывод чтоб
 				printf("+====+====+====+====+====+====+====+====+====+====+====+    +====+====+====+====+====+====+====+====+====+====+====+   +====================+==============+========+========+\n");
 			}
 		}
-	}
-	else
-	{
-		for (size_t i = 0; i < Config::row_size; i++)
-		{
-			player_1.get()->get_field()->print_raw(litera, i, player_1_turn);
-			printf(" |    ");
-			player_2.get()->get_field()->print_raw(litera, i, player_2_turn);
-			printf(" |   %s\n", fleet_info[i].c_str());
-			litera++;
-			if (i < Config::row_size - 1)
-			{
-				printf("+====+====+====+====+====+====+====+====+====+====+====+    +====+====+====+====+====+====+====+====+====+====+====+   +====================+==============+========+========+\n");
-			}
-		}
+		break;
 	}
 
 	// Нижняя рамка карт
@@ -145,26 +138,27 @@ std::string Gameplay::give_player_name()
 GameModuleData Gameplay::gameplay_start()
 {
 	system("cls");
-	std::cin.ignore();
 
 	std::cout << "[Chief Officer] Please introduce yourself (Player One): ";
 	std::string p1_name = this->give_player_name();
 	std::cout << std::endl;
 	std::cin.ignore();
 
-	ptr_player_1 = std::make_shared<Player>(p1_name, config);
+	ptr_player_1 = std::make_shared<Player>(p1_name, EN_PLAYER_1, config);
 
 	std::cout << "[Chief Officer] Please introduce yourself (Player Two): ";
 	std::string p2_name = this->give_player_name();
 	std::cout << std::endl;
 	std::cin.ignore();  // очищаем буфер от '\n'
 
-	ptr_player_2 = std::make_shared<Player>(p2_name, config);
+	ptr_player_2 = std::make_shared<Player>(p2_name, EN_PLAYER_2, config);
 
 	ptr_player_1.get()->set_player_fleet();
+	ptr_player_1->set_cur_state(true);
 	system("cls");
 
 	ptr_player_2.get()->set_player_fleet();
+	ptr_player_2->set_cur_state(false);
 	system("cls");
 
 	return this->middle_game();
@@ -178,84 +172,81 @@ GameModuleData Gameplay::middle_game()
 	{
 		// переделать ввод на перехват клавишь для отрисовки поля с маркером !! в этом модуле 
 		// после выбора через enter координаты выбранной точки пробрасываются в ход игрока и оттуда может прилететь исключение если точка не верна
-		
-		system("cls");
+		GameModuleData data{ EN_GAMEPLAY_CODE, EN_NONE_OPT };
 
-		if (this->player_turn)
+		if (this->ptr_player_1->get_cur_state())
 		{
-			print_info(this->player_turn);
-
-			Point fire_point;
-
-			try
-			{
-				fire_point = ptr_player_1.get()->make_turn();
-			}
-			catch (ExceptionExitCode& e)
-			{
-				std::cout << e.what() << std::endl;
-				return GameModuleData{ EN_MENU_MANAGER_CODE, EN_PAUSE_GAME };
-			}
-
-			// дополнить проверку результата удара тем, что это может быть не просто пустая клетка(тогда мимо) 
-			//		но и уже обстрелянная(тогда новый запрос на выстрел) если же попали тогда новый выстрел
-
-			bool shot_result = ptr_player_2.get()->get_field()->check_fire_point(fire_point);
-
-			ptr_player_2.get()->get_field()->give_fire_point(fire_point);
-			
-			if (shot_result)
-			{
-				ptr_player_2.get()->get_fleet_damage(fire_point);
-
-
-				if (ptr_player_2.get()->get_fleet()->get_size_of_oper_fleet() == 0)
-				{
-					std::cout << "Player 1 has won!" << std::endl;
-					return GameModuleData{ EN_MENU_MANAGER_CODE, EN_BACK_MAIN_MENU };
-				}
-
-				continue;
-			}
-
-			this->player_turn = false;
+			data = player_turn_fun(ptr_player_1, ptr_player_2);
 		}
 		else
 		{
-			print_info(player_turn);
-			Point fire_point;
+			data = player_turn_fun(ptr_player_2, ptr_player_1);
+		}
 
-			try
-			{
-				fire_point = ptr_player_2.get()->make_turn();
-			}
-			catch (ExceptionExitCode& e)
-			{
-				std::cout << e.what() << std::endl;
-				return GameModuleData{ EN_MENU_MANAGER_CODE, EN_PAUSE_GAME };
-			}
-
-			bool shot_result = ptr_player_1.get()->get_field()->check_fire_point(fire_point);
-
-			if (shot_result)
-			{
-				ptr_player_1.get()->get_field()->give_fire_point(fire_point);
-				ptr_player_1.get()->get_fleet_damage(fire_point);
-
-				if (ptr_player_1.get()->get_fleet()->get_size_of_oper_fleet() == 0)
-				{
-					std::cout << "Player 2 has won!" << std::endl;
-					return GameModuleData{ EN_MENU_MANAGER_CODE, EN_BACK_MAIN_MENU };
-				}
-
-				continue;
-			}
-
-			player_turn = true;
+		switch (data.game_module_code)
+		{
+		case EN_MENU_MANAGER_CODE:
+			return data;
+		case EN_GAMEPLAY_CODE:
+			break;
 		}
 	}
 
 	return GameModuleData{ EN_MENU_MANAGER_CODE, EN_BACK_MAIN_MENU };
+}
+
+GameModuleData Gameplay::player_turn_fun(std::shared_ptr<Player> ptr_player, std::shared_ptr<Player> ptr_rival)
+{
+	system("cls");
+	
+	while (ptr_player->get_cur_state())
+	{
+		print_info(ptr_player->get_player_id()); // переписать эту хуйню на зависимость от id игрока а не от блядской переменной тру фолз
+
+		Point fire_point;
+
+		try
+		{
+			fire_point = ptr_player.get()->make_turn();
+		}
+		catch (ExceptionExitCode& e)
+		{
+			std::cout << e.what() << std::endl;
+			return GameModuleData{ EN_MENU_MANAGER_CODE, EN_PAUSE_GAME };
+		}
+
+		// дополнить проверку результата удара тем, что это может быть не просто пустая клетка(тогда мимо) 
+		//		но и уже обстрелянная(тогда новый запрос на выстрел) если же попали тогда новый выстрел
+
+		EnFireOptions shot_result = ptr_rival.get()->get_field()->check_fire_point(fire_point);
+
+		switch (shot_result)
+		{
+		case EN_HIT:
+			ptr_rival.get()->get_field()->give_fire_point(fire_point);
+			ptr_rival.get()->get_fleet_damage(fire_point);
+
+			if (ptr_rival.get()->get_fleet()->get_size_of_oper_fleet() == 0)
+			{
+				std::cout << "Player 1 has won!" << std::endl;
+				return GameModuleData{ EN_MENU_MANAGER_CODE, EN_BACK_MAIN_MENU };
+			}
+
+			break;
+
+		case EN_MISSED:
+			ptr_rival.get()->get_field()->give_fire_point(fire_point);
+			ptr_player->set_cur_state(false);
+			ptr_rival->set_cur_state(true);
+			break;
+
+		case EN_ERROR_COORDS:
+			std::cout << "[Again please]" << std::endl;
+			break;
+		}
+	}
+
+	return GameModuleData{ EN_GAMEPLAY_CODE, EN_NONE_OPT };
 }
 
 GameModuleData Gameplay::end_game()

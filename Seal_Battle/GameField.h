@@ -6,15 +6,6 @@
 #include "MyExceptions.h"
 #include "Config.h"
 
-enum EnFieldPointType
-{
-	EN_EMPTY_POINT,
-	EN_FIRED_POINT,
-	EN_SHIP_POINT,
-	EN_INTERVAL_ZONE,
-	EN_DESTROY_COMPARTMENT
-};
-
 struct Point
 {
 	size_t x, y;
@@ -171,19 +162,21 @@ public:
 		}
 	}
 
-	bool check_fire_point(const Point& p)
+	EnFireOptions check_fire_point(const Point& p)
 	{
 		switch (game_field[p.y][p.x].get()->get_type())
 		{
 		case EN_EMPTY_POINT:
-		case EN_FIRED_POINT:
 		case EN_INTERVAL_ZONE:
+			return EN_MISSED;
+
+		case EN_FIRED_POINT:
 		case EN_DESTROY_COMPARTMENT:
-			return false;
+			return EN_ERROR_COORDS;
 
 		case EN_SHIP_POINT:
 		default:
-			return true;
+			return EN_HIT;
 		}
 	}
 

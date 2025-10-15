@@ -29,19 +29,23 @@ public:
 
 	Gameplay(EnGameTypes gmp_code) : GameModule(EN_GAMEPLAY_CODE)
 	{
+		this->player_game_mode = EN_PLAYER_VS_PLAYER; // !!! поправить позже
+
 		this->player_turn = true;
 		this->cur_gameplay_mode = gmp_code;
 	}
 
 	GameModuleData module_process(EnMenuOptions option) override;
 
-	void print_info(bool turn);
+	void print_info(EnPlayers p_turn);
 
 	std::string give_player_name();
 
 	GameModuleData gameplay_start();
 
 	GameModuleData middle_game();
+
+	GameModuleData player_turn_fun(std::shared_ptr<Player> ptr_player, std::shared_ptr<Player> ptr_rival);
 
 	GameModuleData end_game();
 
