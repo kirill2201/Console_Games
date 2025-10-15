@@ -20,7 +20,7 @@ void GameField::print_raw(wchar_t litera, size_t idx, bool print_key) const
 			printf("~~");
 			break;
 		case EN_FIRED_POINT:
-			printf("XX");
+			printf("ES");
 			break;
 		case EN_INTERVAL_ZONE:
 			printf("^^");

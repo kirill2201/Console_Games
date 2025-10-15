@@ -1,7 +1,5 @@
 ﻿#include "Player.h"
 
-size_t Player::players_count = 0;
-
 EnShipDirection Player::parse_direction(std::string direction_str)
 {
 	std::string cleaned;
@@ -426,9 +424,9 @@ void Player::set_player_fleet()
 
 	std::cin >> ans;
 
-	printf("\n");
+	std::cout << std::endl;
 
-	if (ans.compare("y") || ans.compare("Y"))
+	if (ans == "y" || ans == "Y")
 	{
 		random_location = true;
 	}
@@ -495,7 +493,7 @@ Point Player::make_turn()
 	Point fire_point;
 
 	fire_point.x = col;
-	fire_point.y = col;
+	fire_point.y = row;
 
 	return fire_point;
 }
@@ -540,7 +538,7 @@ const std::map<Point, std::shared_ptr<Ship>>& Player::get_point_to_ship_dict() c
 	return this->point_to_ship_dict;
 }
 
-size_t Player::get_player_id() const
+EnPlayers Player::get_player_id() const
 {
 	return this->player_id;
 }
