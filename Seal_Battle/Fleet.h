@@ -48,8 +48,29 @@ public:
 
 	const size_t get_size_of_wasted_fleet() const;
 
-	size_t get_def_size() const
+	size_t get_def_size() const;
+
+	bool check_situation()
 	{
-		return this->size_def_fleet;
+		size_oper_fleet = 0;
+		size_wasted_fleet = 0;
+
+		for (const auto& ship : fleet)
+		{
+			if (ship->get_is_active())
+			{
+				size_oper_fleet += 1;
+			}
+			else
+			{
+				size_wasted_fleet += 1;
+				wasted_ships.push_back(ship);
+			}
+		}
+
+		this->size_oper_fleet = size_oper_fleet;
+		this->size_wasted_fleet = size_wasted_fleet;
+
+		return this->size_oper_fleet != 0;
 	}
 };

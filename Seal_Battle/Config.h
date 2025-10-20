@@ -5,6 +5,13 @@
 #include <algorithm>
 #include <random>
 
+enum EnDifficultyAI
+{
+	EN_EASY_AI,
+	EN_MIDDLE_AI,
+	EN_HARD_AI
+};
+
 enum EnPlayers
 {
 	EN_PLAYER_1,
@@ -93,6 +100,9 @@ public:
 	static const size_t ship_names_count = 200;
 	static const size_t crue_names_count = 4000;
 	static const size_t ship_names_max = 200;
+	static const size_t max_sz_stream = 10000;
+	static const size_t max_sz_log = 10;
+
 private:
 	std::vector<std::string> ship_names;
 

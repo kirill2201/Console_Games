@@ -2,14 +2,19 @@
 
 #include <windows.h>
 #include <map>
+#include <list>
 
 #include "Fleet.h"
 
 class Player
 {
-private:
+protected:
 	std::shared_ptr<GameField> ptr_player_field;
+	std::shared_ptr<GameField> ptr_player_atack_field;
+
 	std::shared_ptr<Fleet> ptr_player_fleet;
+	std::list<std::string> player_messages;
+
 	std::map<Point, std::shared_ptr<Ship>> point_to_ship_dict;
 
 	EnPlayers player_id;
@@ -38,7 +43,9 @@ public:
 
 	Player(std::string name, EnPlayers player_id, const Config& config) : point_count(0), name(name), player_id(player_id)
 	{
+		ptr_player_atack_field = std::make_shared<GameField>();
 		ptr_player_field = std::make_shared<GameField>();
+
 		ptr_player_fleet = std::make_shared<Fleet>(config);
 	}
 
@@ -46,16 +53,17 @@ public:
 		: point_count(other_player.point_count), name(other_player.name), player_id(other_player.player_id), cur_state(other_player.cur_state),
 			ptr_player_field(other_player.ptr_player_field), ptr_player_fleet(other_player.ptr_player_fleet),
 			point_to_ship_dict(other_player.point_to_ship_dict) {}
+	virtual ~Player() {}
 
-	void set_player_fleet();
+	virtual EnMenuOptions make_turn(Point& fire_point) = 0;
+	virtual void set_player_fleet() = 0;
 
-	Point make_turn();
-
-	void get_fleet_damage(const Point& fire_point);
+	bool get_fleet_damage(const Point& fire_point);
 
 	void print_player_field() const;
 
 	const std::shared_ptr<GameField> get_field() const;
+	const std::shared_ptr<GameField> get_atack_field() const;
 
 	const std::shared_ptr<Fleet> get_fleet() const;
 
@@ -68,8 +76,35 @@ public:
 	const std::string& get_player_name() const;
 	
 	bool get_cur_state() const;
-	void set_cur_state(bool state)
-	{
-		this->cur_state = state;
-	}
+
+	void set_cur_state(bool state);
+
+	std::list<std::string>& get_player_messages();
+};
+
+class HumanPlayer : public Player
+{
+public:
+	HumanPlayer(std::string name, EnPlayers player_id, const Config& config) : Player(name, player_id, config) {}
+
+	void print_info(size_t row_u_ptr, size_t col_u_ptr);
+	EnMenuOptions make_turn(Point& fire_point) override;
+	EnMenuOptions user_field_input(size_t& row, size_t& col);
+
+	void set_player_fleet() override;
+};
+
+class AiPlayer : public Player
+{
+private:
+	EnDifficultyAI difficulty_level;
+
+	void easy_mode_ai(Point& fire_point);
+
+public:
+	AiPlayer(EnDifficultyAI dif_level, const Config& config) : difficulty_level(dif_level), Player("Otto", EN_PLAYER_2, config)
+	{}
+
+	EnMenuOptions make_turn(Point& fire_point) override;
+	void set_player_fleet() override;
 };

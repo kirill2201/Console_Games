@@ -1,8 +1,54 @@
 ﻿#include "GameField.h"
 
-void GameField::print_raw(wchar_t litera, size_t idx, bool print_key) const
+void GameField::print_row_with_u_ptr(wchar_t litera, size_t idx, size_t u_ptr_col, bool print_key) const
 {
-	std::wcout << L"| " << litera << L"  | "; // Добавлен пробел для выравнивания
+	std::wcout << L"| " << litera << L"  | ";
+	EnFieldPointType cur_point_type;
+
+	for (size_t i = 0; i < Config::col_size; i++)
+	{
+		if (i == u_ptr_col)
+		{
+			printf("<>");
+		}
+
+		else
+		{
+			cur_point_type = game_field[idx][i].get()->get_type();
+
+			if (!print_key && (cur_point_type == EN_INTERVAL_ZONE || cur_point_type == EN_SHIP_POINT))
+			{
+				cur_point_type = EN_EMPTY_POINT;
+			}
+
+			switch (cur_point_type)
+			{
+			case EN_EMPTY_POINT:
+				printf("..");
+				break;
+			case EN_FIRED_POINT:
+				printf("XX");
+				break;
+			case EN_INTERVAL_ZONE:
+				printf("::");
+				break;
+			case EN_SHIP_POINT:
+				printf("[]");
+				break;
+			case EN_DESTROY_COMPARTMENT:
+				printf("##");
+				break;
+			}
+		}
+
+		if (i < Config::col_size - 1)
+			printf(" | ");
+	}
+}
+
+void GameField::print_row(wchar_t litera, size_t idx, bool print_key) const
+{
+	std::wcout << L"| " << litera << L"  | ";
 	EnFieldPointType cur_point_type;
 
 	for (size_t i = 0; i < Config::col_size; i++)
@@ -17,13 +63,13 @@ void GameField::print_raw(wchar_t litera, size_t idx, bool print_key) const
 		switch (cur_point_type)
 		{
 		case EN_EMPTY_POINT:
-			printf("~~");
+			printf("..");
 			break;
 		case EN_FIRED_POINT:
-			printf("ES");
+			printf("XX");
 			break;
 		case EN_INTERVAL_ZONE:
-			printf("^^");
+			printf("::");
 			break;
 		case EN_SHIP_POINT:
 			printf("[]");
@@ -51,7 +97,7 @@ void GameField::print_field_large() const
 	wchar_t litera = L'A';
 	for (size_t i = 0; i < Config::row_size; i++)
 	{
-		print_raw(litera, i, true);
+		print_row(litera, i, true);
 
 		printf(" |\n");
 

@@ -25,8 +25,9 @@ GameModuleData MenuManager::module_process(EnMenuOptions option)
 			action_menu_key = this->main_menu->menu_process();
 			break;
 		case EN_LOAD_MENU:
-			action_menu_key = this->load_menu->menu_process();
-			break;
+			//action_menu_key = this->load_menu->menu_process();
+			return GameModuleData{ EN_MENU_MANAGER_CODE, EN_LOAD_GAME };
+
 		case EN_PAUSE_MENU:
 			action_menu_key = this->pause_menu->menu_process();
 			break;
@@ -43,10 +44,11 @@ GameModuleData MenuManager::module_process(EnMenuOptions option)
 		case EN_PM_NEW_GAME:
 			return GameModuleData{ EN_GAMEPLAY_CODE, EN_PM_NEW_GAME };
 
+		case EN_SAVE_GAME:
+			return GameModuleData{ EN_MENU_MANAGER_CODE, EN_SAVE_GAME };
+
 		case EN_LOAD_GAME:
-			// должен быть запуск модуля загрузки
-			this->cur_menu_code = EN_LOAD_MENU;
-			break;
+			return GameModuleData{ EN_MENU_MANAGER_CODE, EN_LOAD_GAME };
 
 		case EN_SETTINGS:
 			this->cur_menu_code = EN_SETTING_MENU;

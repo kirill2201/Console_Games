@@ -1,10 +1,29 @@
-#include "Ship.h"
+﻿#include "Ship.h"
 
 void ShipCompartment::hit()
 {
-	this->compartment_complement = 0;
+	this->compartment_complement.died = this->compartment_complement.ready_for_fight / 2;
+	this->compartment_complement.wounded = this->compartment_complement.ready_for_fight - this->compartment_complement.died;
+	this->compartment_complement.ready_for_fight = 0;
+
 	this->compartment_state = false;
 }
+
+Complement& ShipCompartment::get_compartment_complement()
+{
+	return this->compartment_complement;
+}
+
+bool ShipCompartment::get_compartment_state() const
+{
+	return this->compartment_state;
+}
+
+EnShipCompartmentType ShipCompartment::get_compartment_type() const
+{
+	return this->compartment_type;
+}
+
 
 EnShipCompartmentType Ship::check_comp_type(size_t idx)
 {
@@ -39,7 +58,21 @@ const std::vector<std::shared_ptr<Point>>& Ship::get_ship_coords() const { retur
 
 void Ship::destroy_ship_compartment(size_t index)
 {
+	// добавить расчет ранненых, убитых и готовых к бою
+	this->hp--;
 	ship_hull[index]->hit();
+
+	if(hp == 0)
+		this->is_active = false;
+
+	size_t ready_for_fight = 0;
+
+	for (auto comp : this->ship_hull)
+	{
+		ready_for_fight += comp->get_compartment_complement().ready_for_fight;
+	}
+
+	this->ship_complement = ready_for_fight; // live + wounded
 }
 
 std::string Ship::get_ship_type_str() const
