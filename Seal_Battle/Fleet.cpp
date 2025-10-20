@@ -19,3 +19,8 @@ const size_t Fleet::get_size_of_wasted_fleet() const
 {
 	return this->size_wasted_fleet;
 }
+
+size_t Fleet::get_def_size() const
+{
+	return this->size_def_fleet;
+}

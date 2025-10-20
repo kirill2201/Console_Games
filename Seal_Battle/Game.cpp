@@ -121,7 +121,7 @@ void Game::logo_show()
 	{
 		bool enter_current = GetAsyncKeyState(VK_RETURN) & 0x8000;
 
-		if (enter_current) 
+		if (enter_current)
 		{
 			while (true) {
 				if (GetAsyncKeyState(VK_RETURN) & 0x8000) {
@@ -164,183 +164,457 @@ void Game::save_fleet_data(std::shared_ptr<Fleet>& ptr_player_fleet, std::vector
 
 void Game::save_game()
 {
-	// Извлекаем данные из gameplay
-	/*std::shared_ptr<Player> ptr_player_1 = this->ptr_gameplay->get_ptr_player_1();
-	std::shared_ptr<Player> ptr_player_2 = this->ptr_gameplay->get_ptr_player_2();
+	system("cls");
 
-	std::shared_ptr<GameField> ptr_player_1_field, ptr_player_2_field;
-	std::shared_ptr<Fleet> ptr_player_1_fleet, ptr_player_2_fleet;
-	std::map<Point, std::shared_ptr<Ship>> player_1_point_to_ship_dict, player_2_point_to_ship_dict;
+	using json = nlohmann::json;
 
-	size_t player_1_id, player_2_id;
-	size_t player_1_point_count, player_2_point_count;
-	std::string player_1_name, player_2_name;
-	bool player_1_cur_state, player_2_cur_state;
+	// Создание директории saves, если она не существует
+	const std::string save_dir = "saves";
+	if (!std::filesystem::exists(save_dir)) {
+		std::filesystem::create_directory(save_dir);
+	}
 
-	save_player_data(ptr_player_1, ptr_player_1_field, ptr_player_1_fleet, player_1_point_to_ship_dict,
-		player_1_id, player_1_point_count, player_1_name, player_1_cur_state);
-	save_player_data(ptr_player_2, ptr_player_2_field, ptr_player_2_fleet, player_2_point_to_ship_dict,
-		player_2_id, player_2_point_count, player_2_name, player_2_cur_state);
+	// Запрос имени файла
+	std::string file_name;
+	std::cout << "Enter filename to save (without extension): ";
+	// Очистка буфера ввода
+	std::cin.clear();
+	std::cin.ignore(Config::max_sz_stream, '\n');
+	
+	std::getline(std::cin, file_name); // Используем getline вместо cin >> для корректной обработки пробелов
+	std::cin >> file_name;
 
-	size_t size_def_fleet_1, size_oper_fleet_1, size_wasted_fleet_1;
-	size_t size_def_fleet_2, size_oper_fleet_2, size_wasted_fleet_2;
-	std::vector<std::shared_ptr<Ship>> fleet_1, fleet_2;
-	std::vector<std::shared_ptr<Ship>> wasted_ships_1, wasted_ships_2;
+	if (file_name.empty()) file_name = "savegame";
+	const std::string path = save_dir + "/" + file_name + ".json";
 
-	save_fleet_data(ptr_player_1_fleet, fleet_1, wasted_ships_1, size_def_fleet_1, size_oper_fleet_1, size_wasted_fleet_1);
-	save_fleet_data(ptr_player_2_fleet, fleet_2, wasted_ships_2, size_def_fleet_2, size_oper_fleet_2, size_wasted_fleet_2);
+	// Сбор игроков из gameplay
+	auto p1 = this->ptr_gameplay ? this->ptr_gameplay->get_ptr_player_1() : nullptr;
+	auto p2 = this->ptr_gameplay ? this->ptr_gameplay->get_ptr_player_2() : nullptr;
 
-	// Создаём JSON-объект
-	json j;
+	if (!p1 && !p2)
+	{
+		std::cerr << "No players available to save.\n";
+		return;
+	}
 
-	// Сохраняем режим игры
-	j["gameplay"]["mode"] = enGameTypesToString(ptr_gameplay->get_cur_gameplay_mode());
-	j["gameplay"]["player_mode"] = enPlayerModesToString(ptr_gameplay->get_player_game_mode());
+	json root;
+	root["saved_at"] = static_cast<long long>(std::time(nullptr));
 
-	// Сохраняем конфигурацию (пример, нужно адаптировать под Config)
-	j["gameplay"]["config"]["row_size"] = Config::row_size;
-	j["gameplay"]["config"]["col_size"] = Config::col_size;
-	// Добавить другие параметры Config, если есть, например:
-	// j["gameplay"]["config"]["ship_names"] = ptr_gameplay->get_config().get_ship_names();
+	auto serialize_field = [&](const std::shared_ptr<GameField>& gf) -> json {
+		json jfield = json::array();
+		if (!gf) return jfield;
 
-	// Сохраняем данные игрока 1
-	auto& p1 = j["gameplay"]["player1"];
-	p1["id"] = player_1_id;
-	p1["name"] = player_1_name;
-	p1["point_count"] = player_1_point_count;
-	p1["is_active"] = player_1_cur_state;
-
-	// Сохраняем поле игрока 1
-	auto field1 = ptr_player_1_field->get_field();
-	std::vector<std::vector<std::string>> field_data1;
-	for (const auto& row : field1) {
-		std::vector<std::string> row_data;
-		for (const auto& point : row) {
-			row_data.push_back(enFieldPointTypeToString(point->get_type()));
+		auto grid = gf->get_field(); // vector<vector<shared_ptr<FieldPoint>>>
+		for (size_t r = 0; r < grid.size(); ++r)
+		{
+			json row_j = json::array();
+			for (size_t c = 0; c < grid[r].size(); ++c)
+			{
+				auto fp = grid[r][c];
+				json cell;
+				cell["x"] = fp->get_coord_point().x;
+				cell["y"] = fp->get_coord_point().y;
+				cell["type"] = static_cast<int>(fp->get_type()); // serialize enum as int
+				row_j.push_back(cell);
+			}
+			jfield.push_back(row_j);
 		}
-		field_data1.push_back(row_data);
-	}
-	p1["field"] = field_data1;
+		return jfield;
+		};
 
-	// Сохраняем флот игрока 1
-	std::vector<json> fleet_data1;
-	for (const auto& ship : fleet_1) {
-		json ship_json;
-		ship_json["type"] = enShipTypeToString(ship->get_ship_type());
-		ship_json["name"] = ship->get_ship_name();
-		ship_json["size"] = ship->get_ship_size();
-		ship_json["complement"] = ship->get_ship_complement();
+	auto serialize_player = [&](const std::shared_ptr<Player>& player) -> json {
+		if (!player) return json();
 
-		// Сохраняем координаты корабля
-		std::vector<json> coords;
-		for (const auto& point : ship->get_ship_coords()) {
-			coords.push_back({ {"x", point->x}, {"y", point->y} });
+		json pj;
+		pj["player_id"] = static_cast<int>(player->get_player_id());
+		pj["cur_state"] = player->get_cur_state();
+		pj["point_count"] = player->get_point_count();
+		pj["name"] = player->get_player_name();
+
+		// player_messages (list -> array)
+		json msgs = json::array();
+		for (const auto& m : player->get_player_messages())
+			msgs.push_back(m);
+		pj["player_messages"] = msgs;
+
+		// player_field and attack_field
+		pj["player_field"] = serialize_field(player->get_field());
+		pj["player_atack_field"] = serialize_field(player->get_atack_field());
+
+		// fleet
+		json fleet_j = json::array();
+		if (auto fleet_ptr = player->get_fleet())
+		{
+			auto fleet = fleet_ptr->get_current_fleet();
+			for (size_t si = 0; si < fleet.size(); ++si)
+			{
+				auto s = fleet[si];
+				if (!s) continue;
+				json sj;
+				sj["name"] = s->get_ship_name();
+				sj["type"] = s->get_ship_type_str();
+				sj["crew"] = s->get_ship_complement();
+				sj["size"] = s->get_ship_size();
+
+				// coords
+				json coords_j = json::array();
+				auto coords = s->get_ship_coords();
+				for (size_t ci = 0; ci < coords.size(); ++ci)
+				{
+					coords_j.push_back({ {"x", coords[ci]->x}, {"y", coords[ci]->y} });
+				}
+				sj["coords"] = coords_j;
+
+				fleet_j.push_back(sj);
+			}
 		}
-		ship_json["coords"] = coords;
+		pj["fleet"] = fleet_j;
 
-		// Сохраняем отсеки корабля
-		std::vector<json> hull;
-		for (const auto& comp : ship->get_ship_hull()) {
-			hull.push_back({
-				 {"complement", comp->get_compartment_complement()},
-				 {"state", comp->get_compartment_state()},
-				 {"type", enShipCompartmentTypeToString(comp->get_compartment_type())}
-				});
+		// point_to_ship_dict: serialize entries as { pos: {x,y}, ship_index: idx_in_fleet_or_-1 }
+		json map_entries = json::array();
+		auto dict = player->get_point_to_ship_dict();
+
+		// build lookup of ship pointer -> index in fleet
+		std::vector<std::shared_ptr<Ship>> fleet_lookup;
+		if (auto fleet_ptr = player->get_fleet())
+			fleet_lookup = fleet_ptr->get_current_fleet();
+
+		for (const auto& kv : dict)
+		{
+			const Point& p = kv.first;
+			const auto& ship_ptr = kv.second;
+
+			int ship_idx = -1;
+			for (size_t k = 0; k < fleet_lookup.size(); ++k)
+			{
+				if (fleet_lookup[k] == ship_ptr) { ship_idx = static_cast<int>(k); break; }
+			}
+
+			json me;
+			me["pos"] = { {"x", p.x}, {"y", p.y} };
+			me["ship_index"] = ship_idx;
+			map_entries.push_back(me);
 		}
-		ship_json["hull"] = hull;
+		pj["point_to_ship_map"] = map_entries;
 
-		fleet_data1.push_back(ship_json);
+		return pj;
+		};
+
+	json players = json::array();
+	if (p1) players.push_back(serialize_player(p1));
+	if (p2) players.push_back(serialize_player(p2));
+	root["players"] = players;
+
+	// Запись в файл
+	std::ofstream ofs(path);
+	if (!ofs.is_open())
+	{
+		std::cerr << "Failed to open file for writing: " << path << std::endl;
+		return;
 	}
-	p1["fleet"] = fleet_data1;
 
-	// Сохраняем уничтоженные корабли игрока 1 (только имена для упрощения)
-	std::vector<std::string> wasted_ships_names1;
-	for (const auto& ship : wasted_ships_1) {
-		wasted_ships_names1.push_back(ship->get_ship_name());
-	}
-	p1["wasted_ships"] = wasted_ships_names1;
+	ofs << std::setw(2) << root << std::endl;
+	ofs.close();
 
-	// Сохраняем данные игрока 2 (аналогично)
-	auto& p2 = j["gameplay"]["player2"];
-	p2["id"] = player_2_id;
-	p2["name"] = player_2_name;
-	p2["point_count"] = player_2_point_count;
-	p2["is_active"] = player_2_cur_state;
+	std::cout << "Game saved to: " << path << std::endl;
 
-	// Сохраняем поле игрока 2
-	auto field2 = ptr_player_2_field->get_field();
-	std::vector<std::vector<std::string>> field_data2;
-	for (const auto& row : field2) {
-		std::vector<std::string> row_data;
-		for (const auto& point : row) {
-			row_data.push_back(enFieldPointTypeToString(point->get_type()));
-		}
-		field_data2.push_back(row_data);
-	}
-	p2["field"] = field_data2;
-
-	// Сохраняем флот игрока 2
-	std::vector<json> fleet_data2;
-	for (const auto& ship : fleet_2) {
-		json ship_json;
-		ship_json["type"] = enShipTypeToString(ship->get_ship_type());
-		ship_json["name"] = ship->get_ship_name();
-		ship_json["size"] = ship->get_ship_size();
-		ship_json["complement"] = ship->get_ship_complement();
-
-		// Сохраняем координаты корабля
-		std::vector<json> coords;
-		for (const auto& point : ship->get_ship_coords()) {
-			coords.push_back({ {"x", point->x}, {"y", point->y} });
-		}
-		ship_json["coords"] = coords;
-
-		// Сохраняем отсеки корабля
-		std::vector<json> hull;
-		for (const auto& comp : ship->get_ship_hull()) {
-			hull.push_back({
-				 {"complement", comp->get_compartment_complement()},
-				 {"state", comp->get_compartment_state()},
-				 {"type", enShipCompartmentTypeToString(comp->get_compartment_type())}
-				});
-		}
-		ship_json["hull"] = hull;
-
-		fleet_data2.push_back(ship_json);
-	}
-	p2["fleet"] = fleet_data2;
-
-	// Сохраняем уничтоженные корабли игрока 2
-	std::vector<std::string> wasted_ships_names2;
-	for (const auto& ship : wasted_ships_2) {
-		wasted_ships_names2.push_back(ship->get_ship_name());
-	}
-	p2["wasted_ships"] = wasted_ships_names2;
-
-	// Записываем JSON в файл
-	std::string filename = "savegame.json"; // Можно запросить имя файла у пользователя
-	std::ofstream file(filename);
-	if (!file.is_open()) {
-		throw std::runtime_error("Cannot open file for saving!");
-	}
-	file << j.dump(4); // Форматированный JSON с отступами
-	file.close();
-
-	// Сохраняем данные в вектор saves (если нужно)
-	auto saved_data = std::make_shared<SavedGameplayData>();
-	saved_data->config = ptr_gameplay->get_config();
-	saved_data->cur_gameplay_mode = ptr_gameplay->get_cur_gameplay_mode();
-	saved_data->p1_data = *ptr_player_1;
-	saved_data->p2_data = *ptr_player_2;
-	saves.push_back(saved_data);
-
-	std::cout << "Game saved to " << filename << std::endl;
-	*/
+	std::cin >> file_name; // pause
 }
 
-void Game::load_saved_data()
+void Game::load_game()
 {
+	system("cls");
 
+	using json = nlohmann::json;
+
+	// Получение списка JSON-файлов в директории saves
+	const std::string save_dir = "saves";
+	std::vector<std::string> json_files;
+
+	if (std::filesystem::exists(save_dir) && std::filesystem::is_directory(save_dir)) {
+		for (const auto& entry : std::filesystem::directory_iterator(save_dir)) {
+			if (entry.is_regular_file() && entry.path().extension() == ".json") {
+				json_files.push_back(entry.path().stem().string());
+			}
+		}
+	}
+
+	// Проверка, есть ли файлы для загрузки
+	if (json_files.empty()) {
+		std::cout << "No save files found in directory: " << save_dir << std::endl;
+		std::cout << "Press any key to return to menu...\n";
+		while (!(GetAsyncKeyState(VK_RETURN) & 0x8000) && !(GetAsyncKeyState(VK_ESCAPE) & 0x8000)) {
+			Sleep(10);
+		}
+		return;
+	}
+
+	// Отображение меню выбора файла
+	size_t sz_files = json_files.size();
+	size_t idx = 0;
+	show_menu(json_files, sz_files, idx);
+
+	// Переменные для отслеживания состояния клавиш
+	bool up_pressed = false;
+	bool down_pressed = false;
+	bool enter_pressed = false;
+	bool menu_flag = true;
+
+	std::string file_name;
+
+	while (menu_flag) {
+		// Проверка нажатия ESC для выхода
+		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000 && !enter_pressed) {
+			std::cout << "Pressed ESC. Exit.\n";
+			Sleep(150);
+
+			return; // Возвращаем, чтобы выйти в меню
+		}
+
+		// Перехват стрелок и WASD
+		bool up_current = (GetAsyncKeyState(VK_UP) & 0x8000) || (GetAsyncKeyState('W') & 0x8000);
+		bool down_current = (GetAsyncKeyState(VK_DOWN) & 0x8000) || (GetAsyncKeyState('S') & 0x8000);
+		bool enter_current = GetAsyncKeyState(VK_RETURN) & 0x8000;
+
+		// Обработка нажатия клавиши ВВЕРХ/W
+		if (up_current && !up_pressed) {
+			if (idx > 0) {
+				--idx;
+				show_menu(json_files, sz_files, idx);
+			}
+			Sleep(150); // Задержка после изменения
+		}
+
+		// Обработка нажатия клавиши ВНИЗ/S
+		if (down_current && !down_pressed) {
+			if (idx < sz_files - 1) {
+				++idx;
+				show_menu(json_files, sz_files, idx);
+			}
+			Sleep(150);
+		}
+
+		// Обработка нажатия ENTER
+		if (enter_current && !enter_pressed) {
+			// Ждем отпускания клавиши Enter
+			while (GetAsyncKeyState(VK_RETURN) & 0x8000) {
+				Sleep(10);
+			}
+			file_name = json_files[idx];
+			menu_flag = false; // Выход из цикла меню
+		}
+
+		// Обновление состояния клавиш
+		up_pressed = up_current;
+		down_pressed = down_current;
+		enter_pressed = enter_current;
+
+		Sleep(10); // Основная задержка для снижения нагрузки на процессор
+	}
+
+	// Формирование пути к файлу
+	if (file_name.empty()) file_name = "savegame";
+	const std::string path = save_dir + "/" + file_name + ".json";
+
+	// Открытие и парсинг файла
+	std::ifstream ifs(path);
+	if (!ifs.is_open())
+	{
+		std::cerr << "Failed to open save file: " << path << std::endl;
+		return;
+	}
+
+	json root;
+	try
+	{
+		ifs >> root;
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Failed to parse JSON: " << e.what() << std::endl;
+		return;
+	}
+
+	if (!root.contains("players") || !root["players"].is_array())
+	{
+		std::cerr << "Invalid save file format (missing players array)." << std::endl;
+		return;
+	}
+
+	// Конструируем SavedGameplayData и добавляем в saves
+	auto cfg = (this->ptr_gameplay) ? this->ptr_gameplay->get_config() : Config();
+
+	std::shared_ptr<SavedGameplayData> saved = std::make_shared<SavedGameplayData>();
+	saved->config = cfg;
+	saved->cur_gameplay_mode = EN_PAUSE_GAMEPLAY;
+
+	const auto& players_j = root["players"];
+
+	// Вспомогательная функция для создания и заполнения игрока из JSON
+	auto build_player_from_json = [&](const json& pj) -> std::shared_ptr<Player> {
+		if (!pj.is_object()) return nullptr;
+
+		int pid_int = pj.value("player_id", static_cast<int>(EN_PLAYER_1));
+		EnPlayers pid = static_cast<EnPlayers>(pid_int);
+		std::string pname = pj.value("name", std::string("Player"));
+
+		// Создаем HumanPlayer (предполагаем, что в файле сохранены HumanPlayer)
+		auto player = std::make_shared<HumanPlayer>(pname, pid, cfg);
+
+		// Устанавливаем cur_state, если присутствует
+		if (pj.contains("cur_state"))
+		{
+			player->set_cur_state(pj["cur_state"].get<bool>());
+		}
+
+		// player_messages
+		if (pj.contains("player_messages") && pj["player_messages"].is_array())
+		{
+			auto& msgs = player->get_player_messages();
+			msgs.clear();
+			for (const auto& m : pj["player_messages"])
+			{
+				if (m.is_string()) msgs.push_back(m.get<std::string>());
+			}
+		}
+
+		// Восстановление позиций флота из массива fleet
+		if (pj.contains("fleet") && pj["fleet"].is_array())
+		{
+			auto fleet_ptr = player->get_fleet();
+			if (fleet_ptr)
+			{
+				auto fleet = fleet_ptr->get_current_fleet();
+				const auto& fleet_j = pj["fleet"];
+				size_t limit = fleet.size() < fleet_j.size() ? fleet.size() : fleet_j.size();
+				for (size_t si = 0; si < limit; ++si)
+				{
+					const auto& sj = fleet_j[si];
+					if (!sj.is_object()) continue;
+
+					// Чтение координат
+					std::vector<Point> coords;
+					if (sj.contains("coords") && sj["coords"].is_array())
+					{
+						for (const auto& c : sj["coords"])
+						{
+							if (c.is_object() && c.contains("x") && c.contains("y"))
+							{
+								size_t x = c["x"].get<size_t>();
+								size_t y = c["y"].get<size_t>();
+								coords.push_back(Point{ x, y });
+							}
+						}
+					}
+
+					// Установка координат корабля на карте
+					if (!coords.empty())
+					{
+						try
+						{
+							fleet[si]->set_position_on_the_map(coords);
+							player->get_field()->put_ship_on_the_map(coords);
+						}
+						catch (...)
+						{
+							// Игнорируем ошибки размещения
+						}
+					}
+				}
+			}
+		}
+
+		// Восстановление состояния player_field
+		if (pj.contains("player_field") && pj["player_field"].is_array())
+		{
+			const auto& field_j = pj["player_field"];
+			for (size_t r = 0; r < field_j.size(); ++r)
+			{
+				const auto& row_j = field_j[r];
+				if (!row_j.is_array()) continue;
+				for (size_t c = 0; c < row_j.size(); ++c)
+				{
+					const auto& cell = row_j[c];
+					if (!cell.is_object()) continue;
+					int type_int = cell.value("type", static_cast<int>(EN_EMPTY_POINT));
+					EnFieldPointType t = static_cast<EnFieldPointType>(type_int);
+
+					if (t == EN_FIRED_POINT || t == EN_DESTROY_COMPARTMENT)
+					{
+						Point p{ cell.value("x", c), cell.value("y", r) };
+						try { player->get_field()->give_fire_point(p); }
+						catch (...) { /* игнорируем */ }
+					}
+				}
+			}
+		}
+
+		// Восстановление состояния attack_field
+		if (pj.contains("player_atack_field") && pj["player_atack_field"].is_array())
+		{
+			const auto& field_j = pj["player_atack_field"];
+			for (size_t r = 0; r < field_j.size(); ++r)
+			{
+				const auto& row_j = field_j[r];
+				if (!row_j.is_array()) continue;
+				for (size_t c = 0; c < row_j.size(); ++c)
+				{
+					const auto& cell = row_j[c];
+					if (!cell.is_object()) continue;
+					int type_int = cell.value("type", static_cast<int>(EN_EMPTY_POINT));
+					EnFieldPointType t = static_cast<EnFieldPointType>(type_int);
+					if (t == EN_FIRED_POINT || t == EN_DESTROY_COMPARTMENT)
+					{
+						Point p{ cell.value("x", c), cell.value("y", r) };
+						try { player->get_atack_field()->give_fire_point(p); }
+						catch (...) { /* игнорируем */ }
+					}
+				}
+			}
+		}
+
+		// Восстановление point_to_ship_map
+		if (pj.contains("point_to_ship_map") && pj["point_to_ship_map"].is_array())
+		{
+			auto fleet_ptr = player->get_fleet();
+			std::vector<std::shared_ptr<Ship>> fleet_lookup;
+			if (fleet_ptr) fleet_lookup = fleet_ptr->get_current_fleet();
+
+			auto& dict_ref = const_cast<std::map<Point, std::shared_ptr<Ship>>&>(player->get_point_to_ship_dict());
+			dict_ref.clear();
+			for (const auto& me : pj["point_to_ship_map"])
+			{
+				if (!me.is_object()) continue;
+				if (!me.contains("pos")) continue;
+				const auto& pos = me["pos"];
+				if (!pos.is_object() || !pos.contains("x") || !pos.contains("y")) continue;
+
+				Point p{ pos["x"].get<size_t>(), pos["y"].get<size_t>() };
+				int ship_idx = me.value("ship_index", -1);
+				if (ship_idx >= 0 && static_cast<size_t>(ship_idx) < fleet_lookup.size())
+				{
+					dict_ref[p] = fleet_lookup[static_cast<size_t>(ship_idx)];
+				}
+			}
+		}
+
+		return player;
+		};
+
+	// Создание игроков
+	std::shared_ptr<Player> p1 = nullptr;
+	std::shared_ptr<Player> p2 = nullptr;
+
+	if (players_j.size() > 0) p1 = build_player_from_json(players_j[0]);
+	if (players_j.size() > 1) p2 = build_player_from_json(players_j[1]);
+
+	// Сохранение в вектор saves
+	saved->p1_data = p1;
+	saved->p2_data = p2;
+
+	this->saves.push_back(saved);
+
+	std::cout << "Loaded save: " << path << " (players: " << (p1 ? 1 : 0) << ", " << (p2 ? 1 : 0) << ")\n";
 }
 
 void Game::game_process()
@@ -362,6 +636,20 @@ void Game::game_process()
 			break;
 
 		module_code = game_modules.top()->module_process(module_code.menu_option);
+
+		if (module_code.menu_option == EN_SAVE_GAME)
+		{
+			save_game();
+		}
+		else if (module_code.menu_option == EN_LOAD_GAME)
+		{
+			load_game();
+			/*if(!this->saves.empty())
+				this->ptr_gameplay->set_saves(this->saves);
+			else
+				module_code = { EN_MENU_MANAGER_CODE, EN_BACK_MAIN_MENU};*/
+		}
+
 
 		switch (module_code.game_module_code)
 		{

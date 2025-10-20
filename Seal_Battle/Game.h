@@ -74,8 +74,8 @@ struct SavedGameplayData
 	Config config;
 	EnGameTypes cur_gameplay_mode;
 
-	Player p1_data;
-	Player p2_data;
+	std::shared_ptr<Player> p1_data;
+	std::shared_ptr<Player> p2_data;
 };
 
 class Game
@@ -88,6 +88,20 @@ class Game
 	std::shared_ptr<Gameplay> ptr_gameplay;
 
 	// Функция для центрирования текста
+	void show_menu(const std::vector<std::string>& words, size_t sz_words, size_t idx) const
+	{
+		system("cls");
+
+		for (size_t i = 0; i < sz_words; i++)
+		{
+			if (i == idx)
+			{
+				std::cout << "> ";
+			}
+			std::cout << words[i] << std::endl;
+		}
+	}
+
 	void printCentered(const std::vector<std::string>& art);
 
 	void logo_show();
@@ -100,7 +114,7 @@ class Game
 
 	void save_game();
 
-	void load_saved_data();
+	void load_game();
 public:
 	Game()
 	{

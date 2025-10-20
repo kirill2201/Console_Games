@@ -411,7 +411,275 @@ void Player::set_random_location_ship(std::shared_ptr<Ship> ship) {
 	ptr_player_field.get()->put_ship_on_the_map(ship_hull);
 }
 
-void Player::set_player_fleet()
+bool Player::get_fleet_damage(const Point& fire_point)
+{
+	// определить положение пораженного участка относительно кормы - 0-ого элемента, можно сделать через поиск точки в векторе и возврат индекса
+	// выносим этот участок, hit по части корабля, высчитываем жертвы и т.д
+
+	size_t count = 0;
+	auto ptr_ship = point_to_ship_dict[fire_point];
+
+	for (auto cmprt : ptr_ship->get_ship_coords())
+	{
+		if (cmprt->x == fire_point.x && cmprt->y == fire_point.y)
+			break;
+
+		count++;
+	}
+
+	ptr_ship->destroy_ship_compartment(count); // добавить проверку на уничтожение если вернет true
+
+	this->point_count++;
+
+	return ptr_ship->get_is_active();
+}
+
+void Player::print_player_field() const
+{
+	this->ptr_player_field->print_field_large();
+	return;
+}
+
+const std::shared_ptr<GameField> Player::get_field() const
+{
+	return ptr_player_field;
+}
+
+const std::shared_ptr<GameField> Player::get_atack_field() const
+{
+	return this->ptr_player_atack_field;
+}
+
+const std::shared_ptr<Fleet> Player::get_fleet() const
+{
+	return ptr_player_fleet;
+}
+
+const std::map<Point, std::shared_ptr<Ship>>& Player::get_point_to_ship_dict() const
+{
+	return this->point_to_ship_dict;
+}
+
+EnPlayers Player::get_player_id() const
+{
+	return this->player_id;
+}
+
+size_t Player::get_point_count() const
+{
+	return this->point_count;
+}
+
+const std::string& Player::get_player_name() const
+{
+	return this->name;
+}
+
+bool Player::get_cur_state() const
+{
+	return this->cur_state;
+}
+
+void Player::set_cur_state(bool state)
+{
+	this->cur_state = state;
+}
+
+std::list<std::string>& Player::get_player_messages()
+{
+	return this->player_messages;
+}
+
+//----------------------------------------------------------------------------
+
+EnMenuOptions HumanPlayer::make_turn(Point& fire_point)
+{
+	while (this->cur_state)
+	{
+		EnMenuOptions opt = user_field_input(fire_point.y, fire_point.x);
+
+		if (opt == EN_PAUSE_GAME)
+			return EN_PAUSE_GAME;
+
+		return EN_NONE_OPT;
+	}
+}
+
+void HumanPlayer::print_info(size_t row_u_ptr, size_t col_u_ptr)
+{
+	system("cls");
+
+	std::string p_name = this->name;
+
+	// Заголовки карт: ширина 31 символ, текст центрирован
+	printf("+======================================================+    +======================================================+   +====================+==============+========+========+\n");
+	printf("|                     Attack Map                       |    |                      Your Fleet                      |   |        Name        |      Type    |  Crew  |  Size  |\n");
+	printf("|      0    1    2    3    4    5    6    7    8    9  |    |      0    1    2    3    4    5    6    7    8    9  |   |                    |              |        |        |\n");
+	printf("+====+====+====+====+====+====+====+====+====+====+====+    +====+====+====+====+====+====+====+====+====+====+====+   +=====================================================+\n");
+
+	std::vector<std::string> fleet_info(Config::row_size);
+
+	//Заполнение таблицы флота
+	size_t fleet_idx = 0;
+	// Вывод карт и таблицы
+	wchar_t litera = L'A';
+
+	for (size_t i = 0; i < ptr_player_fleet.get()->get_def_size() && fleet_idx < Config::row_size; ++i, ++fleet_idx)
+	{
+		std::string name = ptr_player_fleet.get()->get_current_fleet()[i]->get_ship_name();
+		std::string ship_type = ptr_player_fleet.get()->get_current_fleet()[i]->get_ship_type_str();
+
+		size_t crew = ptr_player_fleet.get()->get_current_fleet()[i]->get_ship_complement();
+		size_t size = ptr_player_fleet.get()->get_current_fleet()[i]->get_ship_size();
+
+		// Форматирование строки таблицы
+		char buffer[100];
+		snprintf(buffer, 100, "| %-18s | %-12s | %5zu  | %5zu  |",
+			name.c_str(), ship_type.c_str(), crew, size);
+		fleet_info[fleet_idx] = buffer;
+	}
+
+	for (size_t row_i = 0; row_i < Config::row_size; row_i++)
+	{
+		if (row_i == row_u_ptr)
+		{
+			ptr_player_atack_field->print_row_with_u_ptr(litera, row_i, col_u_ptr, false);
+		}
+		else
+		{
+			ptr_player_atack_field->print_row(litera, row_i, false);
+		}
+		printf(" |    ");
+
+		ptr_player_field->print_row(litera, row_i, this->cur_state);
+		printf(" |   %s\n", fleet_info[row_i].c_str());
+		litera++;
+
+		if (row_i < Config::row_size - 1)
+		{
+			printf("+====+====+====+====+====+====+====+====+====+====+====+    +====+====+====+====+====+====+====+====+====+====+====+   +====================+==============+========+========+\n");
+		}
+	}
+
+
+
+	// Нижняя рамка карт
+	printf("+====+====+====+====+====+====+====+====+====+====+====+    +====+====+====+====+====+====+====+====+====+====+====+   +====================+==============+========+========+\n");
+	std::cout << std::endl;
+
+	// Вывод окна лога сообщений
+	 // Ширина окна: 2 карты (2 * 55) + таблица (47) + пробелы (2 * 4) = 165 символов
+	printf("+=============================================================================================================================================================+\n");
+	printf("|                                                                  Message Log                                                                               |\n");
+	printf("+=============================================================================================================================================================+\n");
+
+	// Вывод сообщений (ограничим количеством строк, равным Config::row_size, для соответствия высоте карт)
+	size_t max_messages = Config::row_size; // Максимум строк для лога
+	for (std::string str : player_messages)
+	{
+		// Форматируем строку лога, обрезая до ширины окна (165 - 2 для рамок = 163 символа)
+		std::string message = str.substr(0, 163);
+		printf("| %-155s |\n", message.c_str());
+	}
+
+	// Заполняем пустые строки, если сообщений меньше, чем Config::row_size
+	for (size_t i = player_messages.size(); i < max_messages; ++i)
+	{
+		printf("| %-155s |\n", "");
+	}
+
+	// Нижняя рамка окна лога
+	printf("+=============================================================================================================================================================+\n");
+	std::cout << std::endl;
+
+	// Инструкция для игрока
+	std::cout << "[Chief Officer] Captain " << p_name << ", it's your turn to fire! Use the arrow keys or W/A/S/D to move the target marker, and press Enter to fire. Press Esc to pause the game." << std::endl;
+}
+
+EnMenuOptions HumanPlayer::user_field_input(size_t& row, size_t& col)
+{
+	print_info(row, col);
+
+	bool up_pressed = false;
+	bool left_pressed = false;
+	bool down_pressed = false;
+	bool right_pressed = false;
+	bool enter_pressed = false;
+	bool esc_pressed = false;
+
+	while (true)
+	{
+		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000 && !enter_pressed) {
+			return EN_PAUSE_GAME;
+		}
+
+		bool up_current = (GetAsyncKeyState(VK_UP) & 0x8000) || (GetAsyncKeyState('W') & 0x8000);
+		bool left_current = (GetAsyncKeyState(VK_LEFT) & 0x8000) || (GetAsyncKeyState('A') & 0x8000);
+		bool down_current = (GetAsyncKeyState(VK_DOWN) & 0x8000) || (GetAsyncKeyState('S') & 0x8000);
+		bool right_current = (GetAsyncKeyState(VK_RIGHT) & 0x8000) || (GetAsyncKeyState('D') & 0x8000);
+
+		bool esc_current = GetAsyncKeyState(VK_ESCAPE) & 0x8000;
+		bool enter_current = GetAsyncKeyState(VK_RETURN) & 0x8000;
+
+		// Обработка нажатия клавиши ВВЕРХ/W
+		if (up_current && !up_pressed) {
+			if (row > 0) {
+				--row;
+				print_info(row, col);
+			}
+			Sleep(150); // Задержка только после изменения
+		}
+
+		// Обработка нажатия клавиши LEFT/A
+		if (left_current && !left_pressed) {
+			if (col > 0) {
+				--col;
+				print_info(row, col);
+			}
+			Sleep(150); // Задержка только после изменения
+		}
+
+		// Обработка нажатия клавиши DOWN/S
+		if (down_current && !down_pressed) {
+			if (row < Config::row_size - 1) {
+				++row;
+				print_info(row, col);
+			}
+			Sleep(150); // Задержка только после изменения
+		}
+
+		// Обработка нажатия клавиши RIGHT/D
+		if (right_current && !right_pressed) {
+			if (col < Config::col_size - 1) {
+				++col;
+				print_info(row, col);
+			}
+			Sleep(150); // Задержка только после изменения
+		}
+
+		if (enter_current && !enter_pressed)
+		{
+			while (GetAsyncKeyState(VK_RETURN) & 0x8000) {
+				Sleep(10);
+			}
+			break;
+		}
+
+		if (esc_current && !esc_pressed)
+		{
+			while (GetAsyncKeyState(VK_ESCAPE) & 0x8000)
+			{
+				Sleep(10);
+			}
+
+			return EN_PAUSE_GAME;
+		}
+	}
+
+	return EN_NONE_OPT;
+}
+
+void HumanPlayer::set_player_fleet()
 {
 	system("cls");
 
@@ -455,105 +723,52 @@ void Player::set_player_fleet()
 	}
 }
 
-Point Player::make_turn()
+void AiPlayer::easy_mode_ai(Point& fire_point)
 {
-	/*
-		1. Вывод приглашения ко вводу
-		2. Ввод координат
-			а. Проверка на корректность по размерам поля
-			б. Проверка на то, что само поле еще не тронуто
-			в. Если попали, то (записываем в лог противника сообщения об этом) даем право на еще один залп (return true)
-	*/
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_int_distribution<> dis(0, 9); // Предполагаем поле 10x10
+	size_t row = dis(gen);
+	size_t col = dis(gen);
 
-	size_t row, col;
-	bool turn_flag = true;
-
-	while (turn_flag)
-	{
-		std::cout << "[ " << this->name << " turn ]" << std::endl;
-		std::string user_input;
-		std::cout << "[Chief Officer] Coordinates! Give me a target!: ";
-		std::cin >> user_input;
-
-		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000)
-			throw ExceptionExitCode("Back to menu");
-
-		try
-		{
-			parse_coordinates(user_input, row, col);
-			break;
-		}
-		catch (const MyException& e)
-		{
-			std::cerr << e.what() << std::endl;
-			continue;
-		}
-	}
-
-	Point fire_point;
-
-	fire_point.x = col;
 	fire_point.y = row;
-
-	return fire_point;
+	fire_point.x = col;
 }
 
-void Player::get_fleet_damage(const Point& fire_point)
+EnMenuOptions AiPlayer::make_turn(Point& fire_point)
 {
-	// определить положение пораженного участка относительно кормы - 0-ого элемента, можно сделать через поиск точки в векторе и возврат индекса
-	// выносим этот участок, hit по части корабля, высчитываем жертвы и т.д
-
-	size_t count = 0;
-	auto ptr_ship = point_to_ship_dict[fire_point];
-
-	for (auto cmprt : ptr_ship->get_ship_coords())
+	// Сделать ввод здесь, перенести его из класса Gameplay
+	switch (this->difficulty_level)
 	{
-		if (cmprt->x == fire_point.x && cmprt->y == fire_point.y)
-			break;
-
-		count++;
+	case EN_EASY_AI:
+		this->easy_mode_ai(fire_point);
+		break;
+	case EN_MIDDLE_AI:
+		this->easy_mode_ai(fire_point);
+		break;
+	case EN_HARD_AI:
+		this->easy_mode_ai(fire_point);
+		break;
 	}
 
-	ptr_ship->destroy_ship_compartment(count);
+	return EN_NONE_OPT;
 }
 
-void Player::print_player_field() const
+void AiPlayer::set_player_fleet()
 {
-	this->ptr_player_field->print_field();
-	return;
-}
+	auto fleet = ptr_player_fleet.get()->get_current_fleet();
 
-const std::shared_ptr<GameField> Player::get_field() const
-{
-	return ptr_player_field;
-}
+	for (size_t i = 0; i < fleet.size(); i++)
+	{
+		set_random_location_ship(fleet[i]);
 
-const std::shared_ptr<Fleet> Player::get_fleet() const
-{
-	return ptr_player_fleet;
-}
+		auto ship_coords = fleet[i]->get_ship_coords();
 
-const std::map<Point, std::shared_ptr<Ship>>& Player::get_point_to_ship_dict() const
-{
-	return this->point_to_ship_dict;
-}
+		for (size_t j = 0; j < fleet[i]->get_ship_size(); j++)
+		{
+			Point p{ ship_coords[j]->x, ship_coords[j]->y };
 
-EnPlayers Player::get_player_id() const
-{
-	return this->player_id;
-}
-
-size_t Player::get_point_count() const
-{
-	return this->point_count;
-}
-
-const std::string& Player::get_player_name() const
-{
-	return this->name;
-}
-
-bool Player::get_cur_state() const
-{
-	return this->cur_state;
+			point_to_ship_dict[p] = fleet[i];
+		}
+	}
 }

@@ -40,33 +40,35 @@ enum EnShipCompartmentType
 	EN_STERN
 };
 
+struct Complement
+{
+	size_t ready_for_fight;
+	size_t wounded;
+	size_t died;
+
+	Complement() : ready_for_fight(0), wounded(0), died(0) {}
+	Complement(size_t complement) : ready_for_fight(complement), wounded(0), died(0) {}
+};
+
 class ShipCompartment
 {
 private:
-	size_t compartment_complement;
-	bool   compartment_state;
+	Complement compartment_complement;
+	bool compartment_state;
 	EnShipCompartmentType compartment_type;
 
 public:
-	ShipCompartment(size_t compartment_complement, EnShipCompartmentType compartment_type) :
-		compartment_complement(compartment_complement), compartment_type(compartment_type)
+	ShipCompartment(size_t compartment_complement, EnShipCompartmentType compartment_type) : compartment_type(compartment_type)
 	{
+		this->compartment_complement.ready_for_fight = compartment_complement;
 		this->compartment_state = true;
 	}
-	size_t get_compartment_complement() const
-	{
-		return this->compartment_complement;
-	}
-	
-	bool get_compartment_state() const
-	{
-		return this->compartment_state;
-	}
 
-	EnShipCompartmentType get_compartment_type() const
-	{
-		return this->compartment_type;
-	}
+	Complement& get_compartment_complement();
+
+	bool get_compartment_state() const;
+
+	EnShipCompartmentType get_compartment_type() const;
 
 	void hit();
 };
@@ -84,7 +86,9 @@ class Ship
 	EnShipTypeSize ship_size{ EN_EMPTY_HULL };
 	std::string ship_name;
 	size_t ship_complement{ 0 };
+	size_t hp{ 0 };
 	EnShipType ship_type;
+	bool is_active{ true };
 
 	// Add_Coords
 	std::vector<std::shared_ptr<Point>> ship_coords;
@@ -96,12 +100,16 @@ public:
 	{
 		EnShipCompartmentType comp_type;
 
+
 		switch (ship_type)
 		{
 		case EN_BATTLESHIP:
 			this->ship_complement = EN_BATTLESHIP;
 			this->ship_size = EN_BATTLESHIP_SIZE;
+
+			this->hp = this->ship_size;
 			this->ship_hull.resize(this->ship_size);
+
 
 			for (size_t i = 0; i < this->ship_size; i++)
 			{
@@ -114,6 +122,8 @@ public:
 		case EN_CRUISER:
 			this->ship_complement = EN_CRUISER;
 			this->ship_size = EN_CRUISER_SIZE;
+
+			this->hp = this->ship_size;
 			this->ship_hull.resize(this->ship_size);
 
 			for (size_t i = 0; i < this->ship_size; i++)
@@ -127,6 +137,8 @@ public:
 		case EN_DESTROYER:
 			this->ship_complement = EN_DESTROYER;
 			this->ship_size = EN_DESTROYER_SIZE;
+
+			this->hp = this->ship_size;
 			this->ship_hull.resize(this->ship_size);
 
 			for (size_t i = 0; i < this->ship_size; i++)
@@ -140,6 +152,8 @@ public:
 		case EN_TORPEDO_BOAT:
 			this->ship_complement = EN_TORPEDO_BOAT;
 			this->ship_size = EN_TORPEDO_BOAT_SIZE;
+
+			this->hp = this->ship_size;
 			this->ship_hull.resize(this->ship_size);
 
 			for (size_t i = 0; i < this->ship_size; i++)
@@ -155,17 +169,17 @@ public:
 	virtual ~Ship() {};
 
 	const std::string& get_ship_name() const;
-	
+
 	EnShipTypeSize get_ship_size() const;
-	
+
 	size_t get_ship_complement() const;
-	
+
 	EnShipType get_ship_type() const;
-	
+
 	const std::vector<std::shared_ptr<ShipCompartment>>& get_ship_hull() const;
 
 	const std::vector<std::shared_ptr<Point>>& get_ship_coords() const;
-	
+
 	void destroy_ship_compartment(size_t index);
 
 	std::string get_ship_type_str() const;
@@ -173,6 +187,8 @@ public:
 	void print_ship_info();
 
 	void set_position_on_the_map(const std::vector<Point>& points);
+
+	bool get_is_active() const { return this->is_active; }
 };
 
 class ShipBattleship : public Ship

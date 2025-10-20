@@ -101,7 +101,8 @@ public:
 		}
 	}
 
-	void print_raw(wchar_t litera, size_t idx, bool print_key) const;
+	void print_row_with_u_ptr(wchar_t litera, size_t idx, size_t u_ptr_col, bool print_key) const;
+	void print_row(wchar_t litera, size_t idx, bool print_key) const;
 
 	void print_field_large() const;
 	void print_field() const;
