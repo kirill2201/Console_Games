@@ -494,9 +494,15 @@ std::list<std::string>& Player::get_player_messages()
 
 EnMenuOptions HumanPlayer::make_turn(Point& fire_point)
 {
+	fire_point.x = this->fire_ptr_map.x;
+	fire_point.y = this->fire_ptr_map.y;
+
 	while (this->cur_state)
 	{
 		EnMenuOptions opt = user_field_input(fire_point.y, fire_point.x);
+
+		this->fire_ptr_map.x = fire_point.x;
+		this->fire_ptr_map.y = fire_point.y;
 
 		if (opt == EN_PAUSE_GAME)
 			return EN_PAUSE_GAME;
@@ -561,14 +567,12 @@ void HumanPlayer::print_info(size_t row_u_ptr, size_t col_u_ptr)
 		}
 	}
 
-
-
 	// Нижняя рамка карт
 	printf("+====+====+====+====+====+====+====+====+====+====+====+    +====+====+====+====+====+====+====+====+====+====+====+   +====================+==============+========+========+\n");
 	std::cout << std::endl;
 
 	// Вывод окна лога сообщений
-	 // Ширина окна: 2 карты (2 * 55) + таблица (47) + пробелы (2 * 4) = 165 символов
+	// Ширина окна: 2 карты (2 * 55) + таблица (47) + пробелы (2 * 4) = 165 символов
 	printf("+=============================================================================================================================================================+\n");
 	printf("|                                                                  Message Log                                                                               |\n");
 	printf("+=============================================================================================================================================================+\n");
@@ -691,6 +695,7 @@ void HumanPlayer::set_player_fleet()
 	std::string ans;
 
 	std::cin >> ans;
+	std::cin.ignore(Config::max_sz_stream, '\n');
 
 	std::cout << std::endl;
 

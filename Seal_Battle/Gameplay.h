@@ -21,9 +21,17 @@ private:
 	std::shared_ptr<Player> ptr_player_2;
 
 public:
+	Gameplay(std::shared_ptr<Player> ptr_p1, std::shared_ptr<Player> ptr_p2, EnGameTypes gmp_code) : GameModule(EN_GAMEPLAY_CODE)
+	{
+		this->ptr_player_1 = ptr_p1;
+		this->ptr_player_2 = ptr_p2;
+
+		this->cur_gameplay_mode = gmp_code;
+	}
+
 	Gameplay(EnGameTypes gmp_code) : GameModule(EN_GAMEPLAY_CODE)
 	{
-		this->player_game_mode = EN_PLAYER_VS_PLAYER; // !!! поправить позже
+		this->player_game_mode = EN_PLAYER_VS_PLAYER;
 
 		this->player_turn = true;
 		this->cur_gameplay_mode = gmp_code;
@@ -40,10 +48,10 @@ public:
 	GameModuleData gameplay_start();
 
 	GameModuleData middle_game();
+	
+	GameModuleData end_game(std::list<std::string>& game_messages);
 
 	GameModuleData player_turn_fun(std::shared_ptr<Player> ptr_player, std::shared_ptr<Player> ptr_rival, Point& fire_point);
-
-	GameModuleData end_game();
 
 	GameModuleData gameplay_load();
 

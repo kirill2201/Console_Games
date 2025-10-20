@@ -9,6 +9,8 @@
 class Player
 {
 protected:
+	Point fire_ptr_map{0, 0};
+
 	std::shared_ptr<GameField> ptr_player_field;
 	std::shared_ptr<GameField> ptr_player_atack_field;
 
