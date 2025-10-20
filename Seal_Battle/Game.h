@@ -9,66 +9,6 @@
 
 using json = nlohmann::json;
 
-// Вспомогательные функции для конвертации enum'ов в строки
-//
-//std::string enGameTypesToString(EnGameTypes mode) {
-//	switch (mode) {
-//	case 	EN_MAIN_MENU:
-//		return "EN_MAIN_MENU";
-//	case EN_PAUSE_MENU:
-//		return "EN_PAUSE_MENU";
-//	case EN_SETTING_MENU:
-//		return "EN_SETTING_MENU";
-//	case EN_LOAD_MENU:
-//		return "EN_LOAD_MENU";
-//	case EN_START_GAMEPLAY:
-//		return "EN_START_GAMEPLAY";
-//	case EN_PAUSE_GAMEPLAY:
-//		return "EN_PAUSE_GAMEPLAY";
-//	case EN_LOAD_GAMEPLAY:
-//		return "EN_LOAD_GAMEPLAY";
-//
-//	default: return "Unknown";
-//	}
-//}
-//
-//std::string enPlayerModesToString(EnPlayerModes mode) {
-//	switch (mode) {
-//	case EN_PLAYER_VS_PLAYER: return "PlayerVsPlayer";
-//	case EN_PLAYER_VS_AI: return "PlayerVsAI";
-//	default: return "Unknown";
-//	}
-//}
-//
-//std::string enShipTypeToString(EnShipType type) {
-//	switch (type) {
-//	case EN_BATTLESHIP: return "EN_BATTLESHIP";
-//	case EN_CRUISER: return "EN_CRUISER";
-//	case EN_DESTROYER: return "EN_DESTROYER";
-//	case EN_TORPEDO_BOAT: return "EN_TORPEDO_BOAT";
-//	default: return "EN_UNKNOWN";
-//	}
-//}
-//
-//std::string enFieldPointTypeToString(EnFieldPointType type) {
-//	switch (type) {
-//	case EN_EMPTY_POINT: return "EN_EMPTY_POINT";
-//	case EN_FIRED_POINT: return "EN_FIRED_POINT";
-//	case EN_SHIP_POINT: return "EN_SHIP_POINT";
-//	case EN_INTERVAL_ZONE: return "EN_INTERVAL_ZONE";
-//	default: return "EN_UNKNOWN";
-//	}
-//}
-//
-//std::string enShipCompartmentTypeToString(EnShipCompartmentType type) {
-//	switch (type) {
-//	case EN_BOW: return "EN_BOW";
-//	case EN_MIDDLE: return "EN_MIDDLE";
-//	case EN_STERN: return "EN_STERN";
-//	default: return "EN_UNKNOWN";
-//	}
-//}
-
 struct SavedGameplayData
 {
 	Config config;
