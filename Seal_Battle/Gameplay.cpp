@@ -157,9 +157,9 @@ std::string Gameplay::give_player_name()
 	std::string p_name;
 
 	std::cin.clear();
-	//std::cin.ignore(Config::max_sz_stream, '\n');
 
 	std::cin >> p_name;
+	std::cin.ignore(Config::max_sz_stream, '\n');
 
 	return p_name;
 }
@@ -331,11 +331,15 @@ GameModuleData Gameplay::middle_game()
 {
 	bool game_flag = true;
 
+	Point fire_point{ 0,0 };
+
 	while (game_flag)
 	{
 		GameModuleData data{ EN_GAMEPLAY_CODE, EN_NONE_OPT };
 		EnFireOptions shot_result;
-		Point fire_point{0, 0};
+
+		fire_point.y = 0;
+		fire_point.x = 0;
 
 		if (ptr_player_1->get_cur_state())
 		{
@@ -358,15 +362,47 @@ GameModuleData Gameplay::middle_game()
 
 		if (ptr_player_1->get_cur_state())
 		{
-			//shot_result = ptr_player_2->get_field()->check_fire_point(fire_point);
 			data = this->player_turn_fun(ptr_player_1, ptr_player_2, fire_point);
 		}
 		else
 		{
-			//shot_result = ptr_player_1->get_field()->check_fire_point(fire_point);
 			data = this->player_turn_fun(ptr_player_2, ptr_player_1, fire_point);
 		}
 
+		if (data.game_module_code == EN_MENU_MANAGER_CODE)
+			break;
+	}
+
+	return GameModuleData{ EN_MENU_MANAGER_CODE, EN_BACK_MAIN_MENU };
+}
+
+GameModuleData Gameplay::end_game(std::list<std::string>& game_messages)
+{
+
+	bool enter_pressed = false;
+	bool esc_pressed = false;
+
+	while (true)
+	{
+		bool esc_current = GetAsyncKeyState(VK_ESCAPE) & 0x8000;
+		bool enter_current = GetAsyncKeyState(VK_RETURN) & 0x8000;
+
+		if (enter_current && !enter_pressed)
+		{
+			while (GetAsyncKeyState(VK_RETURN) & 0x8000) {
+				Sleep(10);
+			}
+			break;
+		}
+
+		if (esc_current && !esc_pressed)
+		{
+			while (GetAsyncKeyState(VK_ESCAPE) & 0x8000)
+			{
+				Sleep(10);
+			}
+			break;
+		}
 	}
 
 	return GameModuleData{ EN_MENU_MANAGER_CODE, EN_BACK_MAIN_MENU };
@@ -375,14 +411,15 @@ GameModuleData Gameplay::middle_game()
 GameModuleData Gameplay::player_turn_fun(std::shared_ptr<Player> ptr_player, std::shared_ptr<Player> ptr_rival, Point& fire_point)
 {
 	// Выбор очереди сообщений в зависимости от ID игрока
-	std::list<std::string>& game_messages = (ptr_player->get_player_id() == EN_PLAYER_1) ? ptr_player->get_player_messages() : ptr_rival->get_player_messages();
+	std::list<std::string>& game_messages = ptr_player->get_player_messages();
+
 
 	EnFireOptions shot_result = ptr_rival->get_field()->check_fire_point(fire_point);
 
 	switch (shot_result)
 	{
 	case EN_HIT:
-		game_messages.push_back("[Chief Officer] Direct hit! That'll teach them!");
+		game_messages.push_front("[Chief Officer] Direct hit! That'll teach them!");
 		ptr_rival->get_field()->give_fire_point(fire_point);
 		ptr_player->get_atack_field()->get_field()[fire_point.y][fire_point.x]->set_type(EN_DESTROY_COMPARTMENT);
 
@@ -393,12 +430,37 @@ GameModuleData Gameplay::player_turn_fun(std::shared_ptr<Player> ptr_player, std
 
 		if (!ptr_rival->get_fleet()->check_situation())
 		{
-			game_messages.push_front("[Chief Officer] All enemy ships have been destroyed! Victory is ours, Captain!");
+			std::string title = "[Chief Officer]";
+			std::string main = "All enemy ships have been destroyed! Victory is ours, Captain!";
+			std::string hint = "[Enter/ESC]";
+			std::string msg = title + " " + main + " " + hint;
 
-			std::string dummy;
-			std::getline(std::cin, dummy);
+			// Minimum width for the frame
+			size_t minWidth = 60;
+			size_t boxWidth = msg.length() + 4; // padding left/right inside box
+			if (boxWidth < minWidth) boxWidth = minWidth;
 
-			return GameModuleData{ EN_MENU_MANAGER_CODE, EN_BACK_MAIN_MENU };
+			// Draw top border
+			std::cout << "+" << std::string(boxWidth - 2, '=') << "+" << std::endl;
+
+			// Empty spacer line
+			std::cout << "|" << std::string(boxWidth - 2, ' ') << "|" << std::endl;
+
+			// Centered message line (no wrapping)
+			size_t innerWidth = boxWidth - 2;
+			size_t paddingLeft = 0;
+			if (innerWidth > msg.length())
+				paddingLeft = (innerWidth - msg.length()) / 2;
+			std::cout << "|" << std::string(paddingLeft, ' ') << msg
+				<< std::string(innerWidth - paddingLeft - msg.length(), ' ') << "|" << std::endl;
+
+			// Empty spacer line
+			std::cout << "|" << std::string(boxWidth - 2, ' ') << "|" << std::endl;
+
+			// Bottom border
+			std::cout << "+" << std::string(boxWidth - 2, '=') << "+" << std::endl;
+
+			return end_game(game_messages);
 		}
 		break;
 
@@ -421,11 +483,6 @@ GameModuleData Gameplay::player_turn_fun(std::shared_ptr<Player> ptr_player, std
 	}
 
 	return GameModuleData{ EN_GAMEPLAY_CODE, EN_NONE_OPT };
-}
-
-GameModuleData Gameplay::end_game()
-{
-	return GameModuleData{ EN_MENU_MANAGER_CODE, EN_BACK_MAIN_MENU };
 }
 
 GameModuleData Gameplay::gameplay_load()

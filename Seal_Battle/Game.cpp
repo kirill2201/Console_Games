@@ -180,8 +180,8 @@ void Game::save_game()
 	// Очистка буфера ввода
 	std::cin.clear();
 	std::cin.ignore(Config::max_sz_stream, '\n');
-	
-	std::getline(std::cin, file_name); // Используем getline вместо cin >> для корректной обработки пробелов
+
+	std::getline(std::cin, file_name);
 	std::cin >> file_name;
 
 	if (file_name.empty()) file_name = "savegame";
@@ -321,7 +321,7 @@ void Game::save_game()
 	std::cin >> file_name; // pause
 }
 
-void Game::load_game()
+GameModuleData Game::load_game()
 {
 	system("cls");
 
@@ -346,7 +346,7 @@ void Game::load_game()
 		while (!(GetAsyncKeyState(VK_RETURN) & 0x8000) && !(GetAsyncKeyState(VK_ESCAPE) & 0x8000)) {
 			Sleep(10);
 		}
-		return;
+		return GameModuleData{ EN_MENU_MANAGER_CODE, EN_BACK_MAIN_MENU };
 	}
 
 	// Отображение меню выбора файла
@@ -368,7 +368,7 @@ void Game::load_game()
 			std::cout << "Pressed ESC. Exit.\n";
 			Sleep(150);
 
-			return; // Возвращаем, чтобы выйти в меню
+			return GameModuleData{ EN_MENU_MANAGER_CODE, EN_BACK_MAIN_MENU }; // Возвращаем, чтобы выйти в меню
 		}
 
 		// Перехват стрелок и WASD
@@ -421,7 +421,7 @@ void Game::load_game()
 	if (!ifs.is_open())
 	{
 		std::cerr << "Failed to open save file: " << path << std::endl;
-		return;
+		return GameModuleData{ EN_MENU_MANAGER_CODE, EN_BACK_MAIN_MENU };
 	}
 
 	json root;
@@ -432,13 +432,13 @@ void Game::load_game()
 	catch (const std::exception& e)
 	{
 		std::cerr << "Failed to parse JSON: " << e.what() << std::endl;
-		return;
+		return GameModuleData{ EN_MENU_MANAGER_CODE, EN_BACK_MAIN_MENU };
 	}
 
 	if (!root.contains("players") || !root["players"].is_array())
 	{
 		std::cerr << "Invalid save file format (missing players array)." << std::endl;
-		return;
+		return GameModuleData{ EN_MENU_MANAGER_CODE, EN_BACK_MAIN_MENU };
 	}
 
 	// Конструируем SavedGameplayData и добавляем в saves
@@ -615,6 +615,11 @@ void Game::load_game()
 	this->saves.push_back(saved);
 
 	std::cout << "Loaded save: " << path << " (players: " << (p1 ? 1 : 0) << ", " << (p2 ? 1 : 0) << ")\n";
+
+	this->ptr_gameplay.reset();
+	this->ptr_gameplay = std::make_shared<Gameplay>(saved->p1_data, saved->p2_data, saved->cur_gameplay_mode);
+
+	return GameModuleData{ EN_GAMEPLAY_CODE, EN_PM_CONTINUE };
 }
 
 void Game::game_process()
@@ -643,11 +648,7 @@ void Game::game_process()
 		}
 		else if (module_code.menu_option == EN_LOAD_GAME)
 		{
-			load_game();
-			/*if(!this->saves.empty())
-				this->ptr_gameplay->set_saves(this->saves);
-			else
-				module_code = { EN_MENU_MANAGER_CODE, EN_BACK_MAIN_MENU};*/
+			module_code = load_game();
 		}
 
 
