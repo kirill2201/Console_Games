@@ -5,7 +5,7 @@ VisualStudioVersion = 17.14.36127.28
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Tik_Tak_Toe", "Tik_Tak_Toe\Tik_Tak_Toe.vcxproj", "{93B0AB4E-BC47-4B6F-8FD2-21A044E67672}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Seal_Battle", "Seal_Battle\Seal_Battle.vcxproj", "{4EE78D8A-97A2-4A49-AC7A-009252FF323D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Battleship", "Battleship\Seal_Battle.vcxproj", "{4EE78D8A-97A2-4A49-AC7A-009252FF323D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -487,15 +487,6 @@ GameModuleData Gameplay::player_turn_fun(std::shared_ptr<Player> ptr_player, std
 
 GameModuleData Gameplay::gameplay_load()
 {
-	// 1. загрузить данные по тому AI vs Human || Hum vs Hum 
-	// 2. загрузить данные по флотам двух игроков
-	// 3. загрузить данные по point_to_ship_dict (каждая точка на карте - ключ, а корабль значение)
-	// 4. создать карты у игроков, основываясь на данных о флотах с координатами у каждого корабля
-	// 5. загрузить остальную инфу:
-	//    a. static size_t p_id;
-	//    b. size_t point_count;
-	//    c. std::string name;
-	//    d. bool cur_state = false; 
 	return GameModuleData{ EN_MENU_MANAGER_CODE, EN_BACK_MAIN_MENU };
 }
 
@@ -503,55 +494,6 @@ GameModuleData Gameplay::gameplay_continue_load()
 {
 	return middle_game();
 }
-
-//void Gameplay::set_saves(const std::vector<std::shared_ptr<SavedGameplayData>>& saves)
-//{
-//	// Nothing to do if list empty
-//	if (saves.empty()) return;
-//
-//	// Use the most-recently loaded save (last element)
-//	const auto& latest_save = saves.back();
-//	if (!latest_save) return;
-//
-//	// Restore gameplay config and mode
-//	this->config = latest_save->config;
-//	this->cur_gameplay_mode = latest_save->cur_gameplay_mode;
-//
-//	// Restore players pointers (players were constructed by Game::load_game)
-//	this->ptr_player_1 = latest_save->p1_data;
-//	this->ptr_player_2 = latest_save->p2_data;
-//
-//	// If players exist, ensure their fields are present and consistent.
-//	// (load_game already restored fields/ships; here we just attach them to gameplay)
-//	if (this->ptr_player_1)
-//	{
-//		// leave player internal state as loaded; optionally ensure turn state:
-//		// if both players present and neither has cur_state true, default player_1 to true
-//	}
-//	if (this->ptr_player_2)
-//	{
-//		// same as above
-//	}
-//
-//	// Ensure at least one player's cur_state true so gameplay loop behaves predictably
-//	if (ptr_player_1 && ptr_player_2)
-//	{
-//		if (!ptr_player_1->get_cur_state() && !ptr_player_2->get_cur_state())
-//		{
-//			// default to player 1's turn
-//			ptr_player_1->set_cur_state(true);
-//			ptr_player_2->set_cur_state(false);
-//		}
-//	}
-//	else if (ptr_player_1)
-//	{
-//		ptr_player_1->set_cur_state(true);
-//	}
-//	else if (ptr_player_2)
-//	{
-//		ptr_player_2->set_cur_state(true);
-//	}
-//}
 
 const Config& Gameplay::get_config() const
 {
